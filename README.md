@@ -2,50 +2,60 @@
 
 Agenda de turnos para el salón de uñas **Lely's Nails**.
 
-Aplicación móvil Android (APK) generada con [Capacitor](https://capacitorjs.com/) a partir de una web app.
+**Aplicación Android 100% nativa** escrita en **Kotlin** + Material Design 3.  
+Sin HTML, sin WebView, sin Capacitor.
 
 ## Características
 
-- Calendario mensual con estados visuales (libre / 1 turno / completo / no laborable)
+- Calendario mensual nativo (RecyclerView)
+- Estados visuales: libre / 1 turno / completo / no laborable
 - Máximo **2 clientas por día**
 - Miércoles y domingos no laborables (fijos)
 - Días no laborables personalizados
-- Datos guardados en el dispositivo (localStorage)
-- Diseño móvil optimizado
+- Bottom sheets nativos para turnos y formulario
+- Datos en SharedPreferences (dispositivo)
+
+## Stack
+
+| Tecnología | Uso |
+|------------|-----|
+| Kotlin | Lógica |
+| Material Design 3 | UI |
+| ViewBinding | Layouts |
+| SharedPreferences + JSON | Persistencia |
+| minSdk 26 | Android 8.0+ |
 
 ## Generar el APK
 
-### Opción 1: GitHub Actions (recomendado)
+### GitHub Actions (recomendado)
 
-1. Ve a la pestaña **Actions** de este repositorio
-2. Selecciona el workflow **Build APK**
-3. Haz clic en **Run workflow** → **Run workflow**
-4. Cuando termine, descarga el artefacto **lelys-nails-apk**
-5. Dentro encontrarás `app-debug.apk` — instálalo en tu Android
+1. Ve a **Actions** → **Build APK**
+2. **Run workflow** → **Run workflow**
+3. Espera ~3–5 min
+4. Descarga el artefacto **lelys-nails-apk** → `app-debug.apk`
+5. Instálalo en el móvil Android
 
-> La primera vez puede tardar 3–5 minutos (descarga de SDK y dependencias).
-
-### Opción 2: Localmente
-
-Requisitos: Node.js 20+, Java 17+, Android SDK.
+### Localmente
 
 ```bash
-npm install
-npx cap add android
-npx cap sync
-cd android && ./gradlew assembleDebug
+# Requiere JDK 17 + Android SDK
+./gradlew assembleDebug
+# APK: app/build/outputs/apk/debug/app-debug.apk
 ```
 
-El APK quedará en:
-`android/app/build/outputs/apk/debug/app-debug.apk`
-
-## Estructura
+## Estructura del proyecto
 
 ```
-www/                 ← Código de la app (HTML/CSS/JS)
-capacitor.config.json
-package.json
-.github/workflows/build-apk.yml
+app/src/main/
+  java/com/lelysnails/agenda/
+    MainActivity.kt
+    data/AppointmentStore.kt
+    model/
+    ui/CalendarAdapter.kt
+  res/
+    layout/          # XML nativos
+    drawable/        # Fondos e iconos vectoriales
+    values/          # colores, strings, temas
 ```
 
 ## Licencia
