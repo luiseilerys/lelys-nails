@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -54,7 +55,7 @@
             android:background="@drawable/bg_nav_btn"
             android:contentDescription="Cerrar"
             android:src="@drawable/ic_close"
-            android:tint="@color/rose" />
+            app:tint="@color/rose" />
     </LinearLayout>
 
     <View
@@ -69,7 +70,6 @@
         android:paddingHorizontal="20dp"
         android:paddingTop="16dp">
 
-        <!-- Off notice -->
         <LinearLayout
             android:id="@+id/offNotice"
             android:layout_width="match_parent"
@@ -97,7 +97,6 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- Slots -->
         <LinearLayout
             android:id="@+id/slotsContainer"
             android:layout_width="match_parent"
@@ -126,7 +125,6 @@
             android:textSize="12.5sp"
             android:textStyle="bold"
             app:cornerRadius="15dp"
-            app:strokeColor="#E5D5DD"
-            xmlns:app="http://schemas.android.com/apk/res-auto" />
+            app:strokeColor="#E5D5DD" />
     </LinearLayout>
 </LinearLayout>

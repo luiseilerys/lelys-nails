@@ -31,11 +31,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adapter: CalendarAdapter
 
     private var viewYear = 0
-    private var viewMonth = 0 // 0-based
+    private var viewMonth = 0
     private var selectedKey: String? = null
 
     private var daySheet: BottomSheetDialog? = null
     private var formSheet: BottomSheetDialog? = null
+    private var currentDaySheetBinding: BottomSheetDayBinding? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,7 +52,6 @@ class MainActivity : AppCompatActivity() {
         setupWeekdays()
         setupCalendar()
         setupNav()
-
         render()
     }
 
@@ -65,7 +65,6 @@ class MainActivity : AppCompatActivity() {
                 textSize = 10.5f
                 textAlignment = View.TEXT_ALIGNMENT_CENTER
                 setTypeface(typeface, android.graphics.Typeface.BOLD)
-                // Mié (2) y Dom (6) tachados
                 if (i == 2 || i == 6) {
                     setTextColor(ContextCompat.getColor(context, R.color.off_text))
                     paintFlags = paintFlags or android.graphics.Paint.STRIKE_THRU_TEXT_FLAG
@@ -112,10 +111,7 @@ class MainActivity : AppCompatActivity() {
     private fun render() {
         val months = resources.getStringArray(R.array.months)
         binding.tvMonthLabel.text = "${months[viewMonth]} $viewYear"
-
-        val cells = buildCells()
-        adapter.submit(cells)
-
+        adapter.submit(buildCells())
         val (booked, free) = store.monthStats(viewYear, viewMonth)
         binding.tvStatCount.text = booked.toString()
         binding.tvStatFree.text = free.toString()
@@ -127,8 +123,7 @@ class MainActivity : AppCompatActivity() {
             set(Calendar.MONTH, viewMonth)
             set(Calendar.DAY_OF_MONTH, 1)
         }
-        // Lunes = 0
-        val firstDow = cal.get(Calendar.DAY_OF_WEEK) // 1=Dom .. 7=Sáb
+        val firstDow = cal.get(Calendar.DAY_OF_WEEK)
         val offset = (firstDow + 5) % 7
         val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
 
@@ -140,7 +135,6 @@ class MainActivity : AppCompatActivity() {
         )
 
         val list = mutableListOf<DayCell>()
-
         repeat(offset) { list.add(DayCell(kind = DayKind.BLANK)) }
 
         for (d in 1..daysInMonth) {
@@ -151,9 +145,6 @@ class MainActivity : AppCompatActivity() {
                 defaultOff || customOff -> DayKind.OFF
                 else -> store.dayKind(key)
             }
-            val s1 = store.getAppointment(key, 1) != null
-            val s2 = store.getAppointment(key, 2) != null
-
             list.add(
                 DayCell(
                     dayOfMonth = d,
@@ -163,8 +154,8 @@ class MainActivity : AppCompatActivity() {
                     isSelected = key == selectedKey,
                     isDefaultOff = defaultOff,
                     isCustomOff = customOff,
-                    slot1Filled = s1,
-                    slot2Filled = s2
+                    slot1Filled = store.getAppointment(key, 1) != null,
+                    slot2Filled = store.getAppointment(key, 2) != null
                 )
             )
         }
@@ -172,29 +163,25 @@ class MainActivity : AppCompatActivity() {
         val total = offset + daysInMonth
         val tail = (7 - total % 7) % 7
         repeat(tail) { list.add(DayCell(kind = DayKind.BLANK)) }
-
         return list
     }
 
     private fun onDayClicked(cell: DayCell) {
         if (cell.kind == DayKind.BLANK) return
-
         if (cell.isDefaultOff) {
             toast(getString(R.string.day_off_msg))
             return
         }
-
         selectedKey = cell.dateKey
         render()
         openDaySheet(cell.dateKey)
     }
 
-    // ==================== DAY SHEET ====================
-
     private fun openDaySheet(dateKey: String) {
         daySheet?.dismiss()
 
         val sheetBinding = BottomSheetDayBinding.inflate(layoutInflater)
+        currentDaySheetBinding = sheetBinding
         val dialog = BottomSheetDialog(this)
         dialog.setContentView(sheetBinding.root)
         daySheet = dialog
@@ -217,6 +204,7 @@ class MainActivity : AppCompatActivity() {
         dialog.setOnDismissListener {
             if (formSheet?.isShowing != true) {
                 selectedKey = null
+                currentDaySheetBinding = null
                 render()
             }
         }
@@ -227,14 +215,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshDaySheetContent(sheetBinding: BottomSheetDayBinding, dateKey: String) {
         val isCustomOff = store.isCustomOff(dateKey)
-        val slotsContainer = sheetBinding.slotsContainer
-        slotsContainer.removeAllViews()
+        sheetBinding.slotsContainer.removeAllViews()
 
         if (isCustomOff) {
             sheetBinding.offNotice.visibility = View.VISIBLE
             sheetBinding.tvSlotsHint.visibility = View.GONE
             sheetBinding.btnToggleOff.text = getString(R.string.reactivate)
-            sheetBinding.btnToggleOff.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_dark))
+            sheetBinding.btnToggleOff.setTextColor(
+                ContextCompat.getColor(this, android.R.color.holo_green_dark)
+            )
         } else {
             sheetBinding.offNotice.visibility = View.GONE
             sheetBinding.tvSlotsHint.visibility = View.VISIBLE
@@ -242,12 +231,11 @@ class MainActivity : AppCompatActivity() {
             sheetBinding.btnToggleOff.setTextColor(ContextCompat.getColor(this, R.color.muted))
 
             for (slot in 1..2) {
-                val slotView = ItemSlotBinding.inflate(LayoutInflater.from(this), slotsContainer, false)
-                val appt = store.getAppointment(dateKey, slot)
-                bindSlot(slotView, slot, appt) {
+                val slotView = ItemSlotBinding.inflate(LayoutInflater.from(this), sheetBinding.slotsContainer, false)
+                bindSlot(slotView, slot, store.getAppointment(dateKey, slot)) {
                     openFormSheet(dateKey, slot)
                 }
-                slotsContainer.addView(slotView.root)
+                sheetBinding.slotsContainer.addView(slotView.root)
             }
         }
 
@@ -271,7 +259,7 @@ class MainActivity : AppCompatActivity() {
             if (appt.phone.isNotBlank()) {
                 meta = if (meta.isEmpty()) "📞 ${appt.phone}" else "$meta\n📞 ${appt.phone}"
             }
-            b.tvSlotMeta.text = meta.ifEmpty { "" }
+            b.tvSlotMeta.text = meta
             b.tvSlotMeta.visibility = if (meta.isEmpty()) View.GONE else View.VISIBLE
 
             if (appt.notes.isNotBlank()) {
@@ -324,8 +312,6 @@ class MainActivity : AppCompatActivity() {
             render()
         }
     }
-
-    // ==================== FORM SHEET ====================
 
     private fun openFormSheet(dateKey: String, slot: Int) {
         formSheet?.dismiss()
@@ -380,7 +366,8 @@ class MainActivity : AppCompatActivity() {
             val service = if (serviceSel == services[0]) "" else serviceSel
 
             store.saveAppointment(
-                dateKey, slot,
+                dateKey,
+                slot,
                 Appointment(
                     name = name,
                     phone = formBinding.etPhone.text?.toString()?.trim().orEmpty(),
@@ -391,13 +378,7 @@ class MainActivity : AppCompatActivity() {
             )
             toast(getString(R.string.saved))
             dialog.dismiss()
-            // refrescar day sheet
-            daySheet?.let { ds ->
-                val sb = BottomSheetDayBinding.bind(ds.findViewById(com.google.android.material.R.id.design_bottom_sheet)!!)
-                // más simple: cerrar y reabrir day sheet
-            }
-            daySheet?.dismiss()
-            openDaySheet(dateKey)
+            currentDaySheetBinding?.let { refreshDaySheetContent(it, dateKey) }
             render()
         }
 
@@ -405,8 +386,7 @@ class MainActivity : AppCompatActivity() {
             store.deleteAppointment(dateKey, slot)
             toast(getString(R.string.deleted))
             dialog.dismiss()
-            daySheet?.dismiss()
-            openDaySheet(dateKey)
+            currentDaySheetBinding?.let { refreshDaySheetContent(it, dateKey) }
             render()
         }
 
