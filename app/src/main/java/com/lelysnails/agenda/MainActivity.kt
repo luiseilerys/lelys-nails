@@ -2,6 +2,7 @@ package com.lelysnails.agenda
 
 import android.app.TimePickerDialog
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.ArrayAdapter
@@ -40,19 +41,24 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        try {
+            binding = ActivityMainBinding.inflate(layoutInflater)
+            setContentView(binding.root)
 
-        store = AppointmentStore(this)
+            store = AppointmentStore(this)
 
-        val now = Calendar.getInstance()
-        viewYear = now.get(Calendar.YEAR)
-        viewMonth = now.get(Calendar.MONTH)
+            val now = Calendar.getInstance()
+            viewYear = now.get(Calendar.YEAR)
+            viewMonth = now.get(Calendar.MONTH)
 
-        setupWeekdays()
-        setupCalendar()
-        setupNav()
-        render()
+            setupWeekdays()
+            setupCalendar()
+            setupNav()
+            render()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al iniciar MainActivity", e)
+            Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun setupWeekdays() {
@@ -81,6 +87,8 @@ class MainActivity : AppCompatActivity() {
         binding.rvCalendar.layoutManager = GridLayoutManager(this, 7)
         binding.rvCalendar.adapter = adapter
         binding.rvCalendar.itemAnimator = null
+        binding.rvCalendar.setHasFixedSize(false)
+        binding.rvCalendar.isNestedScrollingEnabled = false
     }
 
     private fun setupNav() {
@@ -182,7 +190,7 @@ class MainActivity : AppCompatActivity() {
 
         val sheetBinding = BottomSheetDayBinding.inflate(layoutInflater)
         currentDaySheetBinding = sheetBinding
-        val dialog = BottomSheetDialog(this)
+        val dialog = BottomSheetDialog(this, R.style.Theme_LelysNails_BottomSheet)
         dialog.setContentView(sheetBinding.root)
         daySheet = dialog
 
@@ -231,7 +239,11 @@ class MainActivity : AppCompatActivity() {
             sheetBinding.btnToggleOff.setTextColor(ContextCompat.getColor(this, R.color.muted))
 
             for (slot in 1..2) {
-                val slotView = ItemSlotBinding.inflate(LayoutInflater.from(this), sheetBinding.slotsContainer, false)
+                val slotView = ItemSlotBinding.inflate(
+                    LayoutInflater.from(this),
+                    sheetBinding.slotsContainer,
+                    false
+                )
                 bindSlot(slotView, slot, store.getAppointment(dateKey, slot)) {
                     openFormSheet(dateKey, slot)
                 }
@@ -317,7 +329,7 @@ class MainActivity : AppCompatActivity() {
         formSheet?.dismiss()
 
         val formBinding = DialogAppointmentFormBinding.inflate(layoutInflater)
-        val dialog = BottomSheetDialog(this)
+        val dialog = BottomSheetDialog(this, R.style.Theme_LelysNails_BottomSheet)
         dialog.setContentView(formBinding.root)
         formSheet = dialog
 
@@ -395,5 +407,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun toast(msg: String) {
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+    }
+
+    companion object {
+        private const val TAG = "LelysNails"
     }
 }
