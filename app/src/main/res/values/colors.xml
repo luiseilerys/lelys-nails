@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="rose">#E8799A</color>
+    <color name="rose_light">#F7A8BD</color>
+    <color name="rose_dark">#D4648A</color>
+    <color name="rose_deeper">#CF5F86</color>
+    <color name="ink">#3D2B33</color>
+    <color name="muted">#A89099</color>
+    <color name="line">#F2E2E9</color>
+    <color name="bg">#FDF6F9</color>
+    <color name="white">#FFFFFF</color>
+    <color name="yellow">#FFD93D</color>
+    <color name="yellow_soft">#FFF3B0</color>
+    <color name="yellow_ink">#7A5D00</color>
+    <color name="red">#E63946</color>
+    <color name="red_soft">#FF8A8A</color>
+    <color name="off_bg">#F4ECF1</color>
+    <color name="off_text">#C9B3BD</color>
+    <color name="header_start">#F9B4C7</color>
+</resources>

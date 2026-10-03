@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Lely\'s Nails</string>
+    <string name="subtitle">Agenda de clientas · 2 por día</string>
+    <string name="today">Hoy</string>
+    <string name="free">Libre</string>
+    <string name="partial">1 turno</string>
+    <string name="full">Completo</string>
+    <string name="off_day">No laborable</string>
+    <string name="booked_turns">Turnos agendados</string>
+    <string name="free_slots">Espacios libres</string>
+    <string name="hint">Toca un día para agendar o marcarlo como no laborable</string>
+    <string name="mark_off">Marcar como no laborable</string>
+    <string name="reactivate">Reactivar este día</string>
+    <string name="slot_free">Turno %1$d libre</string>
+    <string name="slot_available">Disponible · toca para agendar</string>
+    <string name="max_clients">Máximo 2 clientas por día.\nToca un turno para agendar o editar.</string>
+    <string name="off_notice">Este día está marcado como\nno laborable.</string>
+    <string name="name_label">Nombre de la clienta *</string>
+    <string name="phone_label">Teléfono</string>
+    <string name="service_label">Servicio</string>
+    <string name="time_label">Hora</string>
+    <string name="notes_label">Notas</string>
+    <string name="save">Guardar turno</string>
+    <string name="delete">Eliminar turno</string>
+    <string name="name_required">El nombre es obligatorio</string>
+    <string name="saved">Turno guardado</string>
+    <string name="deleted">Turno eliminado</string>
+    <string name="day_off_msg">Miércoles y domingos no se trabaja</string>
+    <string name="day_reactivated">Día reactivado</string>
+    <string name="day_marked_off">Día marcado como no laborable</string>
+    <string name="confirm_off_title">Confirmar</string>
+    <string name="confirm_off_message">Este día tiene %1$d turno(s) agendado(s).\n¿Marcarlo como no laborable y eliminar los turnos?</string>
+    <string name="yes">Sí</string>
+    <string name="no">No</string>
+    <string name="choose_service">Elegir…</string>
+
+    <string-array name="services">
+        <item>Elegir…</item>
+        <item>Manicura clásica</item>
+        <item>Uñas acrílicas</item>
+        <item>Gelish / Semipermanente</item>
+        <item>Kapping</item>
+        <item>Pedicura</item>
+        <item>Diseño de uñas</item>
+        <item>Retiro de uñas</item>
+        <item>Otro</item>
+    </string-array>
+
+    <string-array name="weekdays">
+        <item>Lun</item>
+        <item>Mar</item>
+        <item>Mié</item>
+        <item>Jue</item>
+        <item>Vie</item>
+        <item>Sáb</item>
+        <item>Dom</item>
+    </string-array>
+
+    <string-array name="months">
+        <item>Enero</item>
+        <item>Febrero</item>
+        <item>Marzo</item>
+        <item>Abril</item>
+        <item>Mayo</item>
+        <item>Junio</item>
+        <item>Julio</item>
+        <item>Agosto</item>
+        <item>Septiembre</item>
+        <item>Octubre</item>
+        <item>Noviembre</item>
+        <item>Diciembre</item>
+    </string-array>
+
+    <string-array name="days_long">
+        <item>Domingo</item>
+        <item>Lunes</item>
+        <item>Martes</item>
+        <item>Miércoles</item>
+        <item>Jueves</item>
+        <item>Viernes</item>
+        <item>Sábado</item>
+    </string-array>
+</resources>
