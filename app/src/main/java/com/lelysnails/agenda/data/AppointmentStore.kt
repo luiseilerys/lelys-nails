@@ -6,22 +6,15 @@ import com.lelysnails.agenda.model.DayKind
 import org.json.JSONObject
 import java.util.Calendar
 
-/**
- * Almacenamiento local de turnos y días no laborables.
- * Usa SharedPreferences + JSON (sin dependencias extra).
- */
 class AppointmentStore(context: Context) {
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val settings = SettingsStore(context)
 
-    /** Días fijos no laborables: Domingo=1, Miércoles=4 (Calendar) */
     companion object {
         private const val PREFS_NAME = "lelys_nails_v1"
         private const val KEY_DATA = "appointments"
         private const val KEY_OFF = "off_days"
-
-        /** Calendar.SUNDAY = 1, Calendar.WEDNESDAY = 4 */
-        val DEFAULT_OFF_DAYS = setOf(Calendar.SUNDAY, Calendar.WEDNESDAY)
 
         fun dateKey(year: Int, month0: Int, day: Int): String =
             "%04d-%02d-%02d".format(year, month0 + 1, day)
@@ -33,7 +26,7 @@ class AppointmentStore(context: Context) {
         }
     }
 
-    // ---------- Lectura / escritura de turnos ----------
+    fun maxSlots(): Int = settings.maxSlots
 
     fun getAppointment(dateKey: String, slot: Int): Appointment? {
         val root = readData()
@@ -77,12 +70,11 @@ class AppointmentStore(context: Context) {
 
     fun bookedCount(dateKey: String): Int {
         var n = 0
-        if (getAppointment(dateKey, 1) != null) n++
-        if (getAppointment(dateKey, 2) != null) n++
+        for (s in 1..maxSlots()) {
+            if (getAppointment(dateKey, s) != null) n++
+        }
         return n
     }
-
-    // ---------- Días no laborables personalizados ----------
 
     fun isCustomOff(dateKey: String): Boolean {
         val off = readOff()
@@ -96,10 +88,8 @@ class AppointmentStore(context: Context) {
     }
 
     fun isDefaultOff(year: Int, month0: Int, day: Int): Boolean {
-        val cal = Calendar.getInstance().apply {
-            set(year, month0, day)
-        }
-        return cal.get(Calendar.DAY_OF_WEEK) in DEFAULT_OFF_DAYS
+        val cal = Calendar.getInstance().apply { set(year, month0, day) }
+        return settings.isWeekdayOff(cal.get(Calendar.DAY_OF_WEEK))
     }
 
     fun isOff(dateKey: String): Boolean {
@@ -110,40 +100,33 @@ class AppointmentStore(context: Context) {
 
     fun dayKind(dateKey: String): DayKind {
         if (isOff(dateKey)) return DayKind.OFF
-        return when (bookedCount(dateKey)) {
-            0 -> DayKind.FREE
-            1 -> DayKind.PARTIAL
-            else -> DayKind.FULL
+        val booked = bookedCount(dateKey)
+        val max = maxSlots()
+        return when {
+            booked <= 0 -> DayKind.FREE
+            booked >= max -> DayKind.FULL
+            else -> DayKind.PARTIAL
         }
     }
 
-    /** Estadísticas del mes visible */
     fun monthStats(year: Int, month0: Int): Pair<Int, Int> {
-        val cal = Calendar.getInstance().apply {
-            set(year, month0, 1)
-        }
+        val cal = Calendar.getInstance().apply { set(year, month0, 1) }
         val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
         var booked = 0
         var workDays = 0
+        val max = maxSlots()
         for (d in 1..daysInMonth) {
             val key = dateKey(year, month0, d)
             if (isOff(key)) continue
             workDays++
             booked += bookedCount(key)
         }
-        val free = workDays * 2 - booked
-        return booked to free
+        return booked to (workDays * max - booked)
     }
-
-    // ---------- Helpers JSON ----------
 
     private fun readData(): JSONObject {
         val raw = prefs.getString(KEY_DATA, "{}") ?: "{}"
-        return try {
-            JSONObject(raw)
-        } catch (_: Exception) {
-            JSONObject()
-        }
+        return try { JSONObject(raw) } catch (_: Exception) { JSONObject() }
     }
 
     private fun writeData(obj: JSONObject) {
@@ -152,10 +135,6 @@ class AppointmentStore(context: Context) {
 
     private fun readOff(): JSONObject {
         val raw = prefs.getString(KEY_OFF, "{}") ?: "{}"
-        return try {
-            JSONObject(raw)
-        } catch (_: Exception) {
-            JSONObject()
-        }
+        return try { JSONObject(raw) } catch (_: Exception) { JSONObject() }
     }
 }
