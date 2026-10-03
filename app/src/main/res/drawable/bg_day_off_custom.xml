@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Día no laborable: gris + borde discontinuo (se ve distinto del blanco) -->
+<!-- No laborable marcado por el usuario (un poco más oscuro) -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="@color/off_bg" />
+    <solid android:color="@color/off_bg_dark" />
     <corners android:radius="14dp" />
     <stroke
         android:width="1.5dp"

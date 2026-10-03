@@ -39,6 +39,7 @@ class CalendarAdapter(
         private val dotsRow: LinearLayout = itemView.findViewById(R.id.dotsRow)
         private val dot1: View = itemView.findViewById(R.id.dot1)
         private val dot2: View = itemView.findViewById(R.id.dot2)
+        private val tvOffMark: TextView = itemView.findViewById(R.id.tvOffMark)
 
         fun bind(cell: DayCell) {
             if (cell.kind == DayKind.BLANK) {
@@ -48,13 +49,17 @@ class CalendarAdapter(
             }
 
             container.visibility = View.VISIBLE
+            container.alpha = 1f
             tvDay.text = cell.dayOfMonth.toString()
             tvDay.paintFlags = tvDay.paintFlags and Paint.STRIKE_THRU_TEXT_FLAG.inv()
+            tvOffMark.visibility = View.GONE
+            dotsRow.visibility = View.VISIBLE
 
             val ctx = itemView.context
 
             when (cell.kind) {
                 DayKind.FREE -> {
+                    // Libre: blanco, número oscuro, 2 puntos vacíos
                     container.setBackgroundResource(
                         if (cell.isSelected) R.drawable.bg_day_selected else R.drawable.bg_day_free
                     )
@@ -77,15 +82,24 @@ class CalendarAdapter(
                     setDots(cell, R.drawable.bg_dot_on_white, R.drawable.bg_dot_off)
                 }
                 DayKind.OFF -> {
-                    container.setBackgroundResource(R.drawable.bg_day_off)
+                    // No laborable: gris, tachado, sin puntos, marca ✕
+                    val bg = if (cell.isCustomOff) {
+                        R.drawable.bg_day_off_custom
+                    } else {
+                        R.drawable.bg_day_off
+                    }
+                    container.setBackgroundResource(bg)
+                    container.alpha = 0.85f
                     tvDay.setTextColor(ContextCompat.getColor(ctx, R.color.off_text))
                     tvDay.paintFlags = tvDay.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
-                    setDots(cell, R.drawable.bg_dot_off, R.drawable.bg_dot_off)
+                    dotsRow.visibility = View.GONE
+                    tvOffMark.visibility = View.VISIBLE
                 }
                 else -> {}
             }
 
-            if (cell.isSelected && cell.kind != DayKind.PARTIAL && cell.kind != DayKind.FULL) {
+            // Selección: solo en días que se pueden abrir (no off fijos se ven igual)
+            if (cell.isSelected && cell.kind != DayKind.PARTIAL && cell.kind != DayKind.FULL && cell.kind != DayKind.OFF) {
                 container.setBackgroundResource(R.drawable.bg_day_selected)
             }
 

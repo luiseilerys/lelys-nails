@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Día libre: blanco limpio, borde rosa suave, disponible -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
     <solid android:color="@color/white" />
     <corners android:radius="14dp" />
     <stroke
         android:width="1.5dp"
-        android:color="@color/line" />
+        android:color="@color/free_stroke" />
 </shape>

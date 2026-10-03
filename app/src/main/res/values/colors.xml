@@ -14,7 +14,12 @@
     <color name="yellow_ink">#7A5D00</color>
     <color name="red">#E63946</color>
     <color name="red_soft">#FF8A8A</color>
-    <color name="off_bg">#F4ECF1</color>
-    <color name="off_text">#C9B3BD</color>
+    <!-- No laborable: gris azulado (muy distinto del blanco libre) -->
+    <color name="off_bg">#E4E9EF</color>
+    <color name="off_bg_dark">#D0D7E0</color>
+    <color name="off_stroke">#9AA8B8</color>
+    <color name="off_text">#7A8A9A</color>
     <color name="header_start">#F9B4C7</color>
+    <!-- Libre: borde más visible -->
+    <color name="free_stroke">#E8C4D0</color>
 </resources>
