@@ -1,6 +1,9 @@
 package com.lelysnails.agenda
 
 import android.app.TimePickerDialog
+import android.content.Intent
+import android.content.res.Configuration
+import android.graphics.Paint
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -9,12 +12,14 @@ import android.widget.ArrayAdapter
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.lelysnails.agenda.data.AppointmentStore
+import com.lelysnails.agenda.data.NightMode
+import com.lelysnails.agenda.data.SettingsStore
 import com.lelysnails.agenda.databinding.ActivityMainBinding
 import com.lelysnails.agenda.databinding.BottomSheetDayBinding
 import com.lelysnails.agenda.databinding.DialogAppointmentFormBinding
@@ -23,12 +28,16 @@ import com.lelysnails.agenda.model.Appointment
 import com.lelysnails.agenda.model.DayCell
 import com.lelysnails.agenda.model.DayKind
 import com.lelysnails.agenda.ui.CalendarAdapter
+import com.lelysnails.agenda.ui.DrawableFactory
+import com.lelysnails.agenda.ui.StylePalette
 import java.util.Calendar
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var store: AppointmentStore
+    private lateinit var settings: SettingsStore
+    private lateinit var palette: StylePalette
     private lateinit var adapter: CalendarAdapter
 
     private var viewYear = 0
@@ -39,6 +48,12 @@ class MainActivity : AppCompatActivity() {
     private var formSheet: BottomSheetDialog? = null
     private var currentDaySheetBinding: BottomSheetDayBinding? = null
 
+    private val settingsLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        reloadThemeAndUi()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         try {
@@ -46,67 +61,185 @@ class MainActivity : AppCompatActivity() {
             setContentView(binding.root)
 
             store = AppointmentStore(this)
+            settings = SettingsStore(this)
+            palette = resolvePalette()
 
             val now = Calendar.getInstance()
             viewYear = now.get(Calendar.YEAR)
             viewMonth = now.get(Calendar.MONTH)
 
-            setupWeekdays()
-            setupCalendar()
+            adapter = CalendarAdapter(emptyList(), palette) { onDayClicked(it) }
+            binding.rvCalendar.layoutManager = GridLayoutManager(this, 7)
+            binding.rvCalendar.adapter = adapter
+            binding.rvCalendar.itemAnimator = null
+            binding.rvCalendar.isNestedScrollingEnabled = false
+
             setupNav()
+            binding.btnSettings.setOnClickListener {
+                settingsLauncher.launch(Intent(this, SettingsActivity::class.java))
+            }
+
+            applyThemeToChrome()
+            setupWeekdays()
+            setupLegend()
             render()
         } catch (e: Exception) {
-            Log.e(TAG, "Error al iniciar MainActivity", e)
+            Log.e(TAG, "Error al iniciar", e)
             Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
+    private fun resolvePalette(): StylePalette {
+        val dark = when (settings.nightMode) {
+            NightMode.DARK -> true
+            NightMode.LIGHT -> false
+            NightMode.SYSTEM -> {
+                val night = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+                night == Configuration.UI_MODE_NIGHT_YES
+            }
+        }
+        return StylePalette.resolve(settings.style, dark)
+    }
+
+    private fun reloadThemeAndUi() {
+        settings = SettingsStore(this)
+        store = AppointmentStore(this)
+        palette = resolvePalette()
+        applyThemeToChrome()
+        setupWeekdays()
+        setupLegend()
+        render()
+    }
+
+    private fun applyThemeToChrome() {
+        val p = palette
+        binding.rootMain.setBackgroundColor(p.bg)
+        binding.scrollMain.setBackgroundColor(p.bg)
+
+        binding.headerBar.background = DrawableFactory.gradient(
+            binding.headerBar, p.headerStart, p.headerEnd, 0f
+        )
+        // bottom corners only via shape - gradient is fine full width
+        binding.tvLogo.text = p.logoEmoji
+        binding.tvLogo.background = DrawableFactory.rounded(
+            binding.tvLogo, 0x38FFFFFF, null, 0f, p.cornerBtn
+        )
+        binding.tvAppName.text = settings.salonName
+        binding.tvAppName.setTextColor(p.onPrimary)
+        binding.tvSubtitle.text = "Agenda \u00b7 ${store.maxSlots()} por dia"
+        binding.tvSubtitle.setTextColor(0xE6FFFFFF.toInt())
+
+        binding.cardCalendar.setCardBackgroundColor(p.surface)
+        binding.cardCalendar.radius = p.cornerCard * resources.displayMetrics.density
+
+        binding.tvMonthLabel.setTextColor(p.ink)
+        binding.tvStatCount.setTextColor(p.primary)
+        binding.tvStatFree.setTextColor(p.primary)
+        binding.tvStatCountLabel.setTextColor(p.muted)
+        binding.tvStatFreeLabel.setTextColor(p.muted)
+        binding.tvHint.setTextColor(p.muted)
+
+        binding.btnPrevMonth.background = DrawableFactory.rounded(
+            binding.btnPrevMonth, p.bg, null, 0f, p.cornerBtn
+        )
+        binding.btnNextMonth.background = DrawableFactory.rounded(
+            binding.btnNextMonth, p.bg, null, 0f, p.cornerBtn
+        )
+        binding.btnPrevMonth.setColorFilter(p.primary)
+        binding.btnNextMonth.setColorFilter(p.primary)
+
+        binding.btnToday.background = DrawableFactory.rounded(
+            binding.btnToday, p.bg, null, 0f, 99f
+        )
+        binding.btnToday.setTextColor(p.primary)
+
+        binding.btnSettings.backgroundTintList =
+            android.content.res.ColorStateList.valueOf(p.primary)
+        binding.btnSettings.imageTintList =
+            android.content.res.ColorStateList.valueOf(p.onPrimary)
+    }
+
     private fun setupWeekdays() {
-        val names = resources.getStringArray(R.array.weekdays)
+        val names = resources.getStringArray(R.array.weekdays) // Lun..Dom fixed order Mon-first in array
+        // Array is Lun,Mar,Mie,Jue,Vie,Sab,Dom which maps to Calendar MON=2 ... SUN=1
+        // Build ordered labels based on weekStartsOn
+        val calOrder = orderedWeekDays(settings.weekStartsOn)
+        val labelMap = mapOf(
+            Calendar.MONDAY to names[0],
+            Calendar.TUESDAY to names[1],
+            Calendar.WEDNESDAY to names[2],
+            Calendar.THURSDAY to names[3],
+            Calendar.FRIDAY to names[4],
+            Calendar.SATURDAY to names[5],
+            Calendar.SUNDAY to names[6]
+        )
+
         binding.weekdaysRow.removeAllViews()
-        names.forEachIndexed { i, name ->
+        calOrder.forEach { dow ->
             val tv = TextView(this).apply {
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                text = name
+                text = labelMap[dow] ?: ""
                 textSize = 10.5f
                 textAlignment = View.TEXT_ALIGNMENT_CENTER
                 setTypeface(typeface, android.graphics.Typeface.BOLD)
-                if (i == 2 || i == 6) {
-                    setTextColor(ContextCompat.getColor(context, R.color.off_text))
-                    paintFlags = paintFlags or android.graphics.Paint.STRIKE_THRU_TEXT_FLAG
+                if (settings.isWeekdayOff(dow)) {
+                    setTextColor(palette.offText)
+                    paintFlags = paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
                 } else {
-                    setTextColor(ContextCompat.getColor(context, R.color.muted))
+                    setTextColor(palette.muted)
+                    paintFlags = paintFlags and Paint.STRIKE_THRU_TEXT_FLAG.inv()
                 }
             }
             binding.weekdaysRow.addView(tv)
         }
     }
 
-    private fun setupCalendar() {
-        adapter = CalendarAdapter { cell -> onDayClicked(cell) }
-        binding.rvCalendar.layoutManager = GridLayoutManager(this, 7)
-        binding.rvCalendar.adapter = adapter
-        binding.rvCalendar.itemAnimator = null
-        binding.rvCalendar.setHasFixedSize(false)
-        binding.rvCalendar.isNestedScrollingEnabled = false
+    private fun orderedWeekDays(start: Int): List<Int> {
+        val all = listOf(
+            Calendar.SUNDAY, Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY,
+            Calendar.THURSDAY, Calendar.FRIDAY, Calendar.SATURDAY
+        )
+        val idx = all.indexOf(start).coerceAtLeast(0)
+        return all.drop(idx) + all.take(idx)
+    }
+
+    private fun setupLegend() {
+        binding.legendRow.removeAllViews()
+        val items = listOf(
+            Triple("Libre", palette.freeBg, palette.freeStroke),
+            Triple("1+", palette.partialEnd, palette.partialEnd),
+            Triple("Lleno", palette.fullEnd, palette.fullEnd),
+            Triple("Off", palette.offBg, palette.offStroke)
+        )
+        items.forEach { (label, fill, stroke) ->
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                setPadding(0, 0, 24, 0)
+            }
+            val dot = View(this).apply {
+                layoutParams = LinearLayout.LayoutParams(28, 28)
+                background = DrawableFactory.oval(fill, stroke, 3)
+            }
+            val tv = TextView(this).apply {
+                text = label
+                textSize = 10f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                setTextColor(palette.muted)
+                setPadding(10, 0, 0, 0)
+            }
+            row.addView(dot)
+            row.addView(tv)
+            binding.legendRow.addView(row)
+        }
     }
 
     private fun setupNav() {
         binding.btnPrevMonth.setOnClickListener {
-            viewMonth--
-            if (viewMonth < 0) {
-                viewMonth = 11
-                viewYear--
-            }
-            render()
+            viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear-- }; render()
         }
         binding.btnNextMonth.setOnClickListener {
-            viewMonth++
-            if (viewMonth > 11) {
-                viewMonth = 0
-                viewYear++
-            }
-            render()
+            viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++ }; render()
         }
         binding.btnToday.setOnClickListener {
             val n = Calendar.getInstance()
@@ -119,10 +252,11 @@ class MainActivity : AppCompatActivity() {
     private fun render() {
         val months = resources.getStringArray(R.array.months)
         binding.tvMonthLabel.text = "${months[viewMonth]} $viewYear"
-        adapter.submit(buildCells())
+        adapter.submit(buildCells(), palette)
         val (booked, free) = store.monthStats(viewYear, viewMonth)
         binding.tvStatCount.text = booked.toString()
         binding.tvStatFree.text = free.toString()
+        binding.tvSubtitle.text = "Agenda \u00b7 ${store.maxSlots()} por dia"
     }
 
     private fun buildCells(): List<DayCell> {
@@ -132,14 +266,13 @@ class MainActivity : AppCompatActivity() {
             set(Calendar.DAY_OF_MONTH, 1)
         }
         val firstDow = cal.get(Calendar.DAY_OF_WEEK)
-        val offset = (firstDow + 5) % 7
+        val weekOrder = orderedWeekDays(settings.weekStartsOn)
+        val offset = weekOrder.indexOf(firstDow).coerceAtLeast(0)
         val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
 
         val today = Calendar.getInstance()
         val todayKey = AppointmentStore.dateKey(
-            today.get(Calendar.YEAR),
-            today.get(Calendar.MONTH),
-            today.get(Calendar.DAY_OF_MONTH)
+            today.get(Calendar.YEAR), today.get(Calendar.MONTH), today.get(Calendar.DAY_OF_MONTH)
         )
 
         val list = mutableListOf<DayCell>()
@@ -187,10 +320,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun openDaySheet(dateKey: String) {
         daySheet?.dismiss()
-
         val sheetBinding = BottomSheetDayBinding.inflate(layoutInflater)
         currentDaySheetBinding = sheetBinding
-        val dialog = BottomSheetDialog(this, R.style.Theme_LelysNails_BottomSheet)
+        val dialog = BottomSheetDialog(this)
         dialog.setContentView(sheetBinding.root)
         daySheet = dialog
 
@@ -199,24 +331,17 @@ class MainActivity : AppCompatActivity() {
         val cal = Calendar.getInstance().apply { set(y, m, d) }
         val daysLong = resources.getStringArray(R.array.days_long)
         val monthsMin = resources.getStringArray(R.array.months).map { it.lowercase() }
-
         sheetBinding.tvSheetDayName.text = daysLong[cal.get(Calendar.DAY_OF_WEEK) - 1]
         sheetBinding.tvSheetDate.text = "$d de ${monthsMin[m]} $y"
 
         sheetBinding.btnCloseSheet.setOnClickListener {
-            dialog.dismiss()
-            selectedKey = null
-            render()
+            dialog.dismiss(); selectedKey = null; render()
         }
-
         dialog.setOnDismissListener {
             if (formSheet?.isShowing != true) {
-                selectedKey = null
-                currentDaySheetBinding = null
-                render()
+                selectedKey = null; currentDaySheetBinding = null; render()
             }
         }
-
         refreshDaySheetContent(sheetBinding, dateKey)
         dialog.show()
     }
@@ -224,26 +349,20 @@ class MainActivity : AppCompatActivity() {
     private fun refreshDaySheetContent(sheetBinding: BottomSheetDayBinding, dateKey: String) {
         val isCustomOff = store.isCustomOff(dateKey)
         sheetBinding.slotsContainer.removeAllViews()
+        val max = store.maxSlots()
 
         if (isCustomOff) {
             sheetBinding.offNotice.visibility = View.VISIBLE
             sheetBinding.tvSlotsHint.visibility = View.GONE
             sheetBinding.btnToggleOff.text = getString(R.string.reactivate)
-            sheetBinding.btnToggleOff.setTextColor(
-                ContextCompat.getColor(this, android.R.color.holo_green_dark)
-            )
         } else {
             sheetBinding.offNotice.visibility = View.GONE
             sheetBinding.tvSlotsHint.visibility = View.VISIBLE
+            sheetBinding.tvSlotsHint.text = "Maximo $max clientas por dia.\nToca un turno para agendar o editar."
             sheetBinding.btnToggleOff.text = getString(R.string.mark_off)
-            sheetBinding.btnToggleOff.setTextColor(ContextCompat.getColor(this, R.color.muted))
 
-            for (slot in 1..2) {
-                val slotView = ItemSlotBinding.inflate(
-                    LayoutInflater.from(this),
-                    sheetBinding.slotsContainer,
-                    false
-                )
+            for (slot in 1..max) {
+                val slotView = ItemSlotBinding.inflate(LayoutInflater.from(this), sheetBinding.slotsContainer, false)
                 bindSlot(slotView, slot, store.getAppointment(dateKey, slot)) {
                     openFormSheet(dateKey, slot)
                 }
@@ -251,41 +370,33 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        sheetBinding.btnToggleOff.setOnClickListener {
-            toggleOffDay(dateKey, sheetBinding)
-        }
+        sheetBinding.btnToggleOff.setOnClickListener { toggleOffDay(dateKey, sheetBinding) }
     }
 
     private fun bindSlot(b: ItemSlotBinding, slot: Int, appt: Appointment?, onClick: () -> Unit) {
         b.tvSlotNum.text = slot.toString()
         if (appt != null) {
-            b.tvSlotNum.setBackgroundResource(R.drawable.bg_slot_num_filled)
-            b.tvSlotNum.setTextColor(ContextCompat.getColor(this, R.color.white))
+            b.tvSlotNum.background = DrawableFactory.gradient(b.tvSlotNum, palette.primaryLight, palette.primary, palette.cornerBtn)
+            b.tvSlotNum.setTextColor(palette.onPrimary)
             b.tvSlotName.text = appt.name
-            b.tvSlotName.setTextColor(ContextCompat.getColor(this, R.color.ink))
-
+            b.tvSlotName.setTextColor(palette.ink)
             val parts = mutableListOf<String>()
-            if (appt.time.isNotBlank()) parts.add("🕐 ${appt.time}")
+            if (appt.time.isNotBlank()) parts.add("\uD83D\uDD50 ${appt.time}")
             if (appt.service.isNotBlank()) parts.add(appt.service)
-            var meta = parts.joinToString(" · ")
-            if (appt.phone.isNotBlank()) {
-                meta = if (meta.isEmpty()) "📞 ${appt.phone}" else "$meta\n📞 ${appt.phone}"
-            }
+            var meta = parts.joinToString(" \u00b7 ")
+            if (appt.phone.isNotBlank()) meta = if (meta.isEmpty()) "\uD83D\uDCDE ${appt.phone}" else "$meta\n\uD83D\uDCDE ${appt.phone}"
             b.tvSlotMeta.text = meta
             b.tvSlotMeta.visibility = if (meta.isEmpty()) View.GONE else View.VISIBLE
-
             if (appt.notes.isNotBlank()) {
                 b.tvSlotNotes.visibility = View.VISIBLE
-                b.tvSlotNotes.text = "📝 ${appt.notes}"
-            } else {
-                b.tvSlotNotes.visibility = View.GONE
-            }
-            b.tvSlotAction.text = "✎"
+                b.tvSlotNotes.text = "\uD83D\uDCDD ${appt.notes}"
+            } else b.tvSlotNotes.visibility = View.GONE
+            b.tvSlotAction.text = "\u270E"
         } else {
-            b.tvSlotNum.setBackgroundResource(R.drawable.bg_slot_num)
-            b.tvSlotNum.setTextColor(ContextCompat.getColor(this, R.color.muted))
+            b.tvSlotNum.background = DrawableFactory.rounded(b.tvSlotNum, palette.bg, null, 0f, palette.cornerBtn)
+            b.tvSlotNum.setTextColor(palette.muted)
             b.tvSlotName.text = getString(R.string.slot_free, slot)
-            b.tvSlotName.setTextColor(ContextCompat.getColor(this, R.color.muted))
+            b.tvSlotName.setTextColor(palette.muted)
             b.tvSlotMeta.text = getString(R.string.slot_available)
             b.tvSlotMeta.visibility = View.VISIBLE
             b.tvSlotNotes.visibility = View.GONE
@@ -302,7 +413,6 @@ class MainActivity : AppCompatActivity() {
             render()
             return
         }
-
         val booked = store.bookedCount(dateKey)
         if (booked > 0) {
             AlertDialog.Builder(this)
@@ -327,20 +437,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun openFormSheet(dateKey: String, slot: Int) {
         formSheet?.dismiss()
-
         val formBinding = DialogAppointmentFormBinding.inflate(layoutInflater)
-        val dialog = BottomSheetDialog(this, R.style.Theme_LelysNails_BottomSheet)
+        val dialog = BottomSheetDialog(this)
         dialog.setContentView(formBinding.root)
         formSheet = dialog
 
         formBinding.tvFormTitle.text = "Turno $slot"
-
         val services = resources.getStringArray(R.array.services)
-        formBinding.spService.adapter = ArrayAdapter(
-            this,
-            android.R.layout.simple_spinner_dropdown_item,
-            services
-        )
+        formBinding.spService.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, services)
 
         val existing = store.getAppointment(dateKey, slot)
         if (existing != null) {
@@ -348,12 +452,9 @@ class MainActivity : AppCompatActivity() {
             formBinding.etPhone.setText(existing.phone)
             formBinding.etTime.setText(existing.time)
             formBinding.etNotes.setText(existing.notes)
-            val idx = services.indexOf(existing.service).takeIf { it >= 0 } ?: 0
-            formBinding.spService.setSelection(idx)
+            formBinding.spService.setSelection(services.indexOf(existing.service).coerceAtLeast(0))
             formBinding.btnDelete.visibility = View.VISIBLE
-        } else {
-            formBinding.btnDelete.visibility = View.GONE
-        }
+        } else formBinding.btnDelete.visibility = View.GONE
 
         formBinding.etTime.setOnClickListener {
             val cal = Calendar.getInstance()
@@ -371,19 +472,15 @@ class MainActivity : AppCompatActivity() {
             val name = formBinding.etName.text?.toString()?.trim().orEmpty()
             if (name.isEmpty()) {
                 formBinding.etName.error = getString(R.string.name_required)
-                formBinding.etName.requestFocus()
                 return@setOnClickListener
             }
             val serviceSel = formBinding.spService.selectedItem?.toString().orEmpty()
-            val service = if (serviceSel == services[0]) "" else serviceSel
-
             store.saveAppointment(
-                dateKey,
-                slot,
+                dateKey, slot,
                 Appointment(
                     name = name,
                     phone = formBinding.etPhone.text?.toString()?.trim().orEmpty(),
-                    service = service,
+                    service = if (serviceSel == services[0]) "" else serviceSel,
                     time = formBinding.etTime.text?.toString()?.trim().orEmpty(),
                     notes = formBinding.etNotes.text?.toString()?.trim().orEmpty()
                 )
