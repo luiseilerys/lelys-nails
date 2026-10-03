@@ -6,7 +6,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.lelysnails.agenda.R
 import com.lelysnails.agenda.model.DayCell
@@ -14,10 +13,12 @@ import com.lelysnails.agenda.model.DayKind
 
 class CalendarAdapter(
     private var items: List<DayCell> = emptyList(),
+    private var palette: StylePalette,
     private val onDayClick: (DayCell) -> Unit
 ) : RecyclerView.Adapter<CalendarAdapter.VH>() {
 
-    fun submit(list: List<DayCell>) {
+    fun submit(list: List<DayCell>, palette: StylePalette) {
+        this.palette = palette
         items = list
         notifyDataSetChanged()
     }
@@ -30,7 +31,7 @@ class CalendarAdapter(
     override fun getItemCount() = items.size
 
     override fun onBindViewHolder(holder: VH, position: Int) {
-        holder.bind(items[position])
+        holder.bind(items[position], palette)
     }
 
     inner class VH(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -41,7 +42,7 @@ class CalendarAdapter(
         private val dot2: View = itemView.findViewById(R.id.dot2)
         private val tvOffMark: TextView = itemView.findViewById(R.id.tvOffMark)
 
-        fun bind(cell: DayCell) {
+        fun bind(cell: DayCell, p: StylePalette) {
             if (cell.kind == DayKind.BLANK) {
                 container.visibility = View.INVISIBLE
                 container.setOnClickListener(null)
@@ -55,61 +56,55 @@ class CalendarAdapter(
             tvOffMark.visibility = View.GONE
             dotsRow.visibility = View.VISIBLE
 
-            val ctx = itemView.context
-
             when (cell.kind) {
                 DayKind.FREE -> {
-                    // Libre: blanco, número oscuro, 2 puntos vacíos
-                    container.setBackgroundResource(
-                        if (cell.isSelected) R.drawable.bg_day_selected else R.drawable.bg_day_free
+                    container.background = DrawableFactory.rounded(
+                        container, p.freeBg, p.freeStroke, 1.5f, p.cornerDay
                     )
-                    tvDay.setTextColor(
-                        ContextCompat.getColor(
-                            ctx,
-                            if (cell.isToday) R.color.rose else R.color.ink
+                    if (cell.isSelected) {
+                        container.background = DrawableFactory.rounded(
+                            container, p.freeBg, p.primary, 3f, p.cornerDay
                         )
-                    )
-                    setDots(cell, R.drawable.bg_dot_on, R.drawable.bg_dot_off)
+                    }
+                    tvDay.setTextColor(if (cell.isToday) p.primary else p.ink)
+                    setDots(cell, p.primary, p.line)
                 }
                 DayKind.PARTIAL -> {
-                    container.setBackgroundResource(R.drawable.bg_day_partial)
-                    tvDay.setTextColor(ContextCompat.getColor(ctx, R.color.yellow_ink))
-                    setDots(cell, R.drawable.bg_dot_on_yellow, R.drawable.bg_dot_off)
+                    container.background = DrawableFactory.gradient(
+                        container, p.partialStart, p.partialEnd, p.cornerDay, p.partialEnd
+                    )
+                    tvDay.setTextColor(p.partialInk)
+                    setDots(cell, p.partialInk, p.partialStart)
                 }
                 DayKind.FULL -> {
-                    container.setBackgroundResource(R.drawable.bg_day_full)
-                    tvDay.setTextColor(ContextCompat.getColor(ctx, R.color.white))
-                    setDots(cell, R.drawable.bg_dot_on_white, R.drawable.bg_dot_off)
+                    container.background = DrawableFactory.gradient(
+                        container, p.fullStart, p.fullEnd, p.cornerDay, p.fullEnd
+                    )
+                    tvDay.setTextColor(p.onPrimary)
+                    setDots(cell, p.onPrimary, p.fullStart)
                 }
                 DayKind.OFF -> {
-                    // No laborable: gris, tachado, sin puntos, marca ✕
-                    val bg = if (cell.isCustomOff) {
-                        R.drawable.bg_day_off_custom
-                    } else {
-                        R.drawable.bg_day_off
-                    }
-                    container.setBackgroundResource(bg)
-                    container.alpha = 0.85f
-                    tvDay.setTextColor(ContextCompat.getColor(ctx, R.color.off_text))
+                    container.background = DrawableFactory.rounded(
+                        container, p.offBg, p.offStroke, 1.5f, p.cornerDay, dash = true
+                    )
+                    container.alpha = 0.9f
+                    tvDay.setTextColor(p.offText)
                     tvDay.paintFlags = tvDay.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
                     dotsRow.visibility = View.GONE
                     tvOffMark.visibility = View.VISIBLE
+                    tvOffMark.setTextColor(p.offText)
                 }
                 else -> {}
-            }
-
-            // Selección: solo en días que se pueden abrir (no off fijos se ven igual)
-            if (cell.isSelected && cell.kind != DayKind.PARTIAL && cell.kind != DayKind.FULL && cell.kind != DayKind.OFF) {
-                container.setBackgroundResource(R.drawable.bg_day_selected)
             }
 
             container.setOnClickListener { onDayClick(cell) }
         }
 
-        private fun setDots(cell: DayCell, onRes: Int, offRes: Int) {
+        private fun setDots(cell: DayCell, onColor: Int, offColor: Int) {
             dotsRow.visibility = View.VISIBLE
-            dot1.setBackgroundResource(if (cell.slot1Filled) onRes else offRes)
-            dot2.setBackgroundResource(if (cell.slot2Filled) onRes else offRes)
+            // Solo 2 dots en layout; slots extra se reflejan en color del dia
+            dot1.background = DrawableFactory.oval(if (cell.slot1Filled) onColor else offColor)
+            dot2.background = DrawableFactory.oval(if (cell.slot2Filled) onColor else offColor)
         }
     }
 }
