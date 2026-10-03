@@ -1,0 +1,12 @@
+{
+  "appId": "com.lelysnails.agenda",
+  "appName": "Lely's Nails",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#fdf6f9"
+  }
+}
