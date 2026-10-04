@@ -39,6 +39,8 @@
     <string name="yes">Sí</string>
     <string name="no">No</string>
     <string name="choose_service">Elegir…</string>
+    <string name="widget_name">Lely\'s Nails · Agenda</string>
+    <string name="widget_description">Calendario de turnos con vista rápida y alta rápida por nombre</string>
 
     <string-array name="services">
         <item>Elegir…</item>

@@ -27,5 +27,44 @@
             android:exported="false"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.LelysNails" />
+
+        <activity
+            android:name=".widget.WidgetConfigActivity"
+            android:exported="true"
+            android:theme="@style/Theme.LelysNails">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".widget.QuickAddActivity"
+            android:exported="false"
+            android:theme="@style/Theme.LelysNails"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:windowSoftInputMode="stateVisible|adjustResize" />
+
+        <receiver
+            android:name=".widget.AgendaWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.lelysnails.agenda.WIDGET_PREV" />
+                <action android:name="com.lelysnails.agenda.WIDGET_NEXT" />
+                <action android:name="com.lelysnails.agenda.WIDGET_REFRESH" />
+                <action android:name="com.lelysnails.agenda.WIDGET_REFRESH_ALL" />
+                <action android:name="com.lelysnails.agenda.WIDGET_DAY" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/agenda_widget_info" />
+        </receiver>
+
+        <service
+            android:name=".widget.AgendaWidgetService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
     </application>
 </manifest>
