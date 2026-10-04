@@ -4,17 +4,29 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Simple nail polish bottle shape -->
+    <!-- Círculo suave de fondo del glyph -->
+    <path
+        android:fillColor="#33FFFFFF"
+        android:pathData="M54,54m-28,0a28,28 0,1 1,56 0a28,28 0,1 1,-56 0" />
+    <!-- Tapa del esmalte -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M48,28 h12 v8 h-12z" />
+        android:pathData="M46,30h16v6c0,1.5 -0.8,2.8 -2,3.5L58,41h-8l-2,-1.5c-1.2,-0.7 -2,-2 -2,-3.5V30z" />
+    <!-- Cuello -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M46,36 h16 v6 h-16z" />
+        android:pathData="M48,41h12v4H48z" />
+    <!-- Cuerpo botella -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M42,42 h24 c2,0 4,2 4,4 v28 c0,4 -3,8 -8,8 h-16 c-5,0 -8,-4 -8,-8 v-28 c0,-2 2,-4 4,-4z" />
+        android:pathData="M45,45h18c2.2,0 4,1.8 4,4v28c0,2.2 -1.8,4 -4,4H45c-2.2,0 -4,-1.8 -4,-4V49c0,-2.2 1.8,-4 4,-4z" />
+    <!-- Nivel de esmalte (rosa) -->
     <path
         android:fillColor="#F7A8BD"
-        android:pathData="M46,58 h16 v18 c0,2 -1,4 -4,4 h-8 c-3,0 -4,-2 -4,-4z" />
+        android:pathData="M43,58h22v19c0,2.2 -1.8,4 -4,4H47c-2.2,0 -4,-1.8 -4,-4V58z" />
+    <!-- Brillo lateral -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.4"
+        android:pathData="M48,48h3v30h-3z" />
 </vector>
