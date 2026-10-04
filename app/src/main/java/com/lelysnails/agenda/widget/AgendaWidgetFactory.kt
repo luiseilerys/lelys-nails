@@ -8,6 +8,7 @@ import android.widget.RemoteViewsService
 import com.lelysnails.agenda.R
 import com.lelysnails.agenda.data.AppointmentStore
 import com.lelysnails.agenda.model.DayKind
+import com.lelysnails.agenda.ui.StylePalette
 import java.util.Calendar
 
 class AgendaWidgetFactory(
@@ -30,10 +31,12 @@ class AgendaWidgetFactory(
     )
 
     private var cells: List<Cell> = emptyList()
+    private var palette: StylePalette = WidgetTheme.palette(context)
 
     override fun onCreate() {}
 
     override fun onDataSetChanged() {
+        palette = WidgetTheme.palette(context)
         val store = AppointmentStore(context)
         val year = WidgetPrefs.getYear(context, widgetId)
         val month = WidgetPrefs.getMonth(context, widgetId)
@@ -84,45 +87,49 @@ class AgendaWidgetFactory(
 
     override fun getViewAt(position: Int): RemoteViews {
         val rv = RemoteViews(context.packageName, R.layout.widget_day_cell)
+        val p = palette
         if (position !in cells.indices) return rv
         val cell = cells[position]
 
         if (cell.kind == DayKind.BLANK || cell.day == 0) {
             rv.setTextViewText(R.id.cellDay, "")
             rv.setTextViewText(R.id.cellDots, "")
-            rv.setInt(R.id.cellInner, "setBackgroundResource", android.R.color.transparent)
+            rv.setInt(R.id.cellInner, "setBackgroundColor", 0x00000000)
             return rv
         }
 
-        // Hoy: numero con un punto medio sutil delante (no fondo fuerte)
         val label = if (cell.isToday) "\u00B7${cell.day}" else cell.day.toString()
         rv.setTextViewText(R.id.cellDay, label)
         rv.setTextViewText(R.id.cellDots, cell.dots)
 
         when {
             cell.selected && cell.kind != DayKind.OFF -> {
-                rv.setInt(R.id.cellInner, "setBackgroundResource", R.drawable.bg_widget_day_selected)
-                rv.setTextColor(R.id.cellDay, 0xFFE8799A.toInt())
+                rv.setInt(R.id.cellInner, "setBackgroundColor", p.surface)
+                rv.setTextColor(R.id.cellDay, p.primary)
+                rv.setTextColor(R.id.cellDots, p.primary)
             }
             cell.kind == DayKind.OFF -> {
-                rv.setInt(R.id.cellInner, "setBackgroundResource", R.drawable.bg_widget_day_off)
-                rv.setTextColor(R.id.cellDay, 0xFF7A8A9A.toInt())
+                rv.setInt(R.id.cellInner, "setBackgroundColor", p.offBg)
+                rv.setTextColor(R.id.cellDay, p.offText)
+                rv.setTextColor(R.id.cellDots, p.offText)
             }
             cell.kind == DayKind.PARTIAL -> {
-                rv.setInt(R.id.cellInner, "setBackgroundResource", R.drawable.bg_widget_day_partial)
-                rv.setTextColor(R.id.cellDay, 0xFF7A5D00.toInt())
+                rv.setInt(R.id.cellInner, "setBackgroundColor", p.partialEnd)
+                rv.setTextColor(R.id.cellDay, p.partialInk)
+                rv.setTextColor(R.id.cellDots, p.partialInk)
             }
             cell.kind == DayKind.FULL -> {
-                rv.setInt(R.id.cellInner, "setBackgroundResource", R.drawable.bg_widget_day_full)
-                rv.setTextColor(R.id.cellDay, 0xFFFFFFFF.toInt())
+                rv.setInt(R.id.cellInner, "setBackgroundColor", p.fullEnd)
+                rv.setTextColor(R.id.cellDay, p.onPrimary)
+                rv.setTextColor(R.id.cellDots, p.onPrimary)
             }
             else -> {
-                rv.setInt(R.id.cellInner, "setBackgroundResource", R.drawable.bg_widget_day_free)
-                // Hoy libre: tono primario suave en el texto
+                rv.setInt(R.id.cellInner, "setBackgroundColor", p.freeBg)
                 rv.setTextColor(
                     R.id.cellDay,
-                    if (cell.isToday) 0xFFE8799A.toInt() else 0xFF3D2B33.toInt()
+                    if (cell.isToday) p.primary else p.ink
                 )
+                rv.setTextColor(R.id.cellDots, p.primary)
             }
         }
 

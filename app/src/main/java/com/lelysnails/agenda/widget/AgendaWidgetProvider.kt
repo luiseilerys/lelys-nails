@@ -6,7 +6,6 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
 import android.net.Uri
 import android.view.View
 import android.widget.RemoteViews
@@ -56,10 +55,7 @@ class AgendaWidgetProvider : AppWidgetProvider() {
             ACTION_DAY_CLICK -> {
                 val key = intent.getStringExtra(EXTRA_DATE_KEY) ?: return
                 val store = AppointmentStore(context)
-                if (store.isOff(key)) {
-                    // No se puede modificar desde el widget
-                    return
-                }
+                if (store.isOff(key)) return
                 WidgetPrefs.setSelectedKey(context, widgetId, key)
                 updateWidget(context, AppWidgetManager.getInstance(context), widgetId)
             }
@@ -84,24 +80,29 @@ class AgendaWidgetProvider : AppWidgetProvider() {
         fun updateWidget(context: Context, mgr: AppWidgetManager, widgetId: Int) {
             val views = RemoteViews(context.packageName, R.layout.widget_agenda)
             val store = AppointmentStore(context)
-
+            val palette = WidgetTheme.palette(context)
             val alpha = WidgetPrefs.getAlpha(context, widgetId)
-            // Alpha del fondo: 20-95% -> 0x33..0xF2 sobre #FDF6F9
-            val a = (alpha * 255 / 100).coerceIn(40, 245)
-            val bgColor = Color.argb(a, 0xFD, 0xF6, 0xF9)
-            views.setInt(R.id.widgetRoot, "setBackgroundColor", bgColor)
+
+            // Fondo segun estilo + transparencia del usuario
+            views.setInt(R.id.widgetRoot, "setBackgroundColor", WidgetTheme.rootBg(palette, alpha))
 
             val year = WidgetPrefs.getYear(context, widgetId)
             val month = WidgetPrefs.getMonth(context, widgetId)
             val months = context.resources.getStringArray(R.array.months)
             views.setTextViewText(R.id.widgetMonthLabel, "${months[month]} $year")
+            views.setTextColor(R.id.widgetMonthLabel, palette.ink)
 
-            // Nav intents
+            // Tintes de botones (API 31+ setColorFilter no en RemoteViews; usamos tint via setInt en ImageView)
+            try {
+                views.setInt(R.id.widgetBtnPrev, "setColorFilter", palette.primary)
+                views.setInt(R.id.widgetBtnNext, "setColorFilter", palette.primary)
+                views.setInt(R.id.widgetBtnRefresh, "setColorFilter", palette.muted)
+            } catch (_: Exception) { }
+
             views.setOnClickPendingIntent(R.id.widgetBtnPrev, broadcast(context, widgetId, ACTION_PREV))
             views.setOnClickPendingIntent(R.id.widgetBtnNext, broadcast(context, widgetId, ACTION_NEXT))
             views.setOnClickPendingIntent(R.id.widgetBtnRefresh, broadcast(context, widgetId, ACTION_REFRESH))
 
-            // Grid adapter
             val svc = Intent(context, AgendaWidgetService::class.java).apply {
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
                 data = Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
@@ -119,7 +120,6 @@ class AgendaWidgetProvider : AppWidgetProvider() {
             )
             views.setPendingIntentTemplate(R.id.widgetGrid, clickPi)
 
-            // Selected day panel
             var sel = WidgetPrefs.getSelectedKey(context, widgetId)
             if (sel == null) {
                 val now = Calendar.getInstance()
@@ -142,12 +142,18 @@ class AgendaWidgetProvider : AppWidgetProvider() {
             } else {
                 views.setTextViewText(R.id.widgetSelectedDate, sel)
             }
+            views.setTextColor(R.id.widgetSelectedDate, palette.primary)
+            views.setTextColor(R.id.widgetAppointments, palette.ink)
+
+            // Panel inferior
+            views.setInt(R.id.widgetBtnQuickAdd, "setBackgroundColor", palette.primary)
+            views.setTextColor(R.id.widgetBtnQuickAdd, palette.onPrimary)
 
             val isOff = store.isOff(sel)
             val max = store.maxSlots()
             val lines = StringBuilder()
             if (isOff) {
-                lines.append("No laborable · no se puede modificar desde el widget")
+                lines.append("No laborable \u00b7 no se puede modificar desde el widget")
                 views.setViewVisibility(R.id.widgetBtnQuickAdd, View.GONE)
             } else {
                 var any = false
@@ -156,10 +162,10 @@ class AgendaWidgetProvider : AppWidgetProvider() {
                     if (ap != null) {
                         any = true
                         val t = if (ap.time.isNotBlank()) " ${ap.time}" else ""
-                        lines.append("• ${ap.name}$t\n")
+                        lines.append("\u2022 ${ap.name}$t\n")
                     }
                 }
-                if (!any) lines.append("Sin turnos · toca + para agregar")
+                if (!any) lines.append("Sin turnos \u00b7 toca + para agregar")
                 val free = store.findFreeSlot(sel)
                 if (free != null) {
                     views.setViewVisibility(R.id.widgetBtnQuickAdd, View.VISIBLE)
@@ -176,9 +182,7 @@ class AgendaWidgetProvider : AppWidgetProvider() {
                     views.setOnClickPendingIntent(R.id.widgetBtnQuickAdd, addPi)
                 } else {
                     views.setViewVisibility(R.id.widgetBtnQuickAdd, View.GONE)
-                    if (lines.toString().startsWith("•")) {
-                        // dia lleno
-                    } else {
+                    if (!lines.toString().startsWith("\u2022")) {
                         lines.append("\nDia completo")
                     }
                 }
