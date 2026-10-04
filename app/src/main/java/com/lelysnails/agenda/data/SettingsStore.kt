@@ -1,6 +1,7 @@
 package com.lelysnails.agenda.data
 
 import android.content.Context
+import org.json.JSONArray
 import java.util.Calendar
 
 enum class AppStyle(val id: String, val label: String, val emoji: String) {
@@ -61,6 +62,40 @@ class SettingsStore(context: Context) {
     fun isWeekdayOff(calendarDayOfWeek: Int): Boolean =
         calendarDayOfWeek in defaultOffDays
 
+    /** Servicios personalizados (vac\u00edo = lista por defecto) */
+    fun getServices(): List<String> {
+        val raw = prefs.getString(KEY_SERVICES, null)
+        if (raw.isNullOrBlank()) return DEFAULT_SERVICES.toList()
+        return try {
+            val arr = JSONArray(raw)
+            (0 until arr.length()).map { arr.getString(it) }.filter { it.isNotBlank() }
+                .ifEmpty { DEFAULT_SERVICES.toList() }
+        } catch (_: Exception) {
+            DEFAULT_SERVICES.toList()
+        }
+    }
+
+    fun setServices(list: List<String>) {
+        val clean = list.map { it.trim() }.filter { it.isNotBlank() }.distinct()
+        val arr = JSONArray()
+        clean.forEach { arr.put(it) }
+        prefs.edit().putString(KEY_SERVICES, arr.toString()).apply()
+    }
+
+    fun addService(name: String): Boolean {
+        val n = name.trim()
+        if (n.isEmpty()) return false
+        val list = getServices().toMutableList()
+        if (list.any { it.equals(n, ignoreCase = true) }) return false
+        list.add(n)
+        setServices(list)
+        return true
+    }
+
+    fun removeService(name: String) {
+        setServices(getServices().filterNot { it.equals(name, ignoreCase = true) })
+    }
+
     companion object {
         private const val PREFS = "lelys_settings_v1"
         private const val KEY_STYLE = "style"
@@ -69,5 +104,17 @@ class SettingsStore(context: Context) {
         private const val KEY_MAX_SLOTS = "max_slots"
         private const val KEY_OFF_WEEKDAYS = "off_weekdays"
         private const val KEY_SALON = "salon_name"
+        private const val KEY_SERVICES = "services"
+
+        val DEFAULT_SERVICES = listOf(
+            "Manicura clasica",
+            "Unas acrilicas",
+            "Gelish / Semipermanente",
+            "Kapping",
+            "Pedicura",
+            "Diseno de unas",
+            "Retiro de unas",
+            "Otro"
+        )
     }
 }

@@ -76,6 +76,28 @@ class AppointmentStore(context: Context) {
         return n
     }
 
+    /** Primer slot libre del dia, o null si esta lleno */
+    fun findFreeSlot(dateKey: String): Int? {
+        for (s in 1..maxSlots()) {
+            if (getAppointment(dateKey, s) == null) return s
+        }
+        return null
+    }
+
+    /**
+     * Traslada un turno completo a otro dia.
+     * @return mensaje de resultado
+     */
+    fun moveAppointment(fromKey: String, fromSlot: Int, toKey: String): String {
+        if (fromKey == toKey) return "Elige un dia distinto"
+        if (isOff(toKey)) return "Ese dia no es laborable"
+        val appt = getAppointment(fromKey, fromSlot) ?: return "No hay turno para trasladar"
+        val free = findFreeSlot(toKey) ?: return "Ese dia no tiene espacios libres"
+        saveAppointment(toKey, free, appt)
+        deleteAppointment(fromKey, fromSlot)
+        return "Turno trasladado al turno $free"
+    }
+
     fun isCustomOff(dateKey: String): Boolean {
         val off = readOff()
         return off.optBoolean(dateKey, false)
