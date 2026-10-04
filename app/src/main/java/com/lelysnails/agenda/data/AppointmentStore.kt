@@ -8,14 +8,15 @@ import java.util.Calendar
 
 class AppointmentStore(context: Context) {
 
-    private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    private val settings = SettingsStore(context)
+    private val appContext = context.applicationContext
+    private val prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val settings = SettingsStore(appContext)
+    private val backup = JsonBackup(appContext)
 
     companion object {
         private const val PREFS_NAME = "lelys_nails_v1"
         private const val KEY_DATA = "appointments"
         private const val KEY_OFF = "off_days"
-        /** Dias concretos que anulan el no-laborable fijo (ej. un domingo puntual) */
         private const val KEY_WORK_EXCEPTION = "work_exceptions"
 
         fun dateKey(year: Int, month0: Int, day: Int): String =
@@ -103,15 +104,14 @@ class AppointmentStore(context: Context) {
         val obj = readOff()
         if (off) {
             obj.put(dateKey, true)
-            // Si se marca off, quitar excepcion de trabajo
             setWorkException(dateKey, false)
         } else {
             obj.remove(dateKey)
         }
         prefs.edit().putString(KEY_OFF, obj.toString()).apply()
+        autoBackup()
     }
 
-    /** Excepcion: este dia concreto SI se trabaja aunque sea domingo/miercoles */
     fun isWorkException(dateKey: String): Boolean {
         return readWorkExceptions().optBoolean(dateKey, false)
     }
@@ -120,7 +120,6 @@ class AppointmentStore(context: Context) {
         val obj = readWorkExceptions()
         if (enabled) {
             obj.put(dateKey, true)
-            // Quitar custom off si existia
             val off = readOff()
             if (off.has(dateKey)) {
                 off.remove(dateKey)
@@ -130,6 +129,7 @@ class AppointmentStore(context: Context) {
             obj.remove(dateKey)
         }
         prefs.edit().putString(KEY_WORK_EXCEPTION, obj.toString()).apply()
+        autoBackup()
     }
 
     fun isDefaultOff(year: Int, month0: Int, day: Int): Boolean {
@@ -142,11 +142,6 @@ class AppointmentStore(context: Context) {
         return isDefaultOff(parsed.first, parsed.second, parsed.third)
     }
 
-    /**
-     * No laborable si:
-     * - es custom off, o
-     * - es dia fijo off (dom/mie) Y no tiene excepcion de trabajo
-     */
     fun isOff(dateKey: String): Boolean {
         if (isCustomOff(dateKey)) return true
         if (isDefaultOffKey(dateKey) && !isWorkException(dateKey)) return true
@@ -179,6 +174,100 @@ class AppointmentStore(context: Context) {
         return booked to (workDays * max - booked)
     }
 
+    fun hasAnyData(): Boolean {
+        return readData().length() > 0 || readOff().length() > 0 || readWorkExceptions().length() > 0
+    }
+
+    /** JSON completo para respaldo */
+    fun exportFullJson(): JSONObject {
+        return JSONObject().apply {
+            put("version", 1)
+            put("exportedAt", System.currentTimeMillis())
+            put("appointments", readData())
+            put("off_days", readOff())
+            put("work_exceptions", readWorkExceptions())
+            put("settings", JSONObject().apply {
+                put("salonName", settings.salonName)
+                put("maxSlots", settings.maxSlots)
+                put("weekStartsOn", settings.weekStartsOn)
+                put("style", settings.style.id)
+                put("nightMode", settings.nightMode.id)
+                put("offWeekdays", settings.defaultOffDays.joinToString(","))
+                put("services", org.json.JSONArray(settings.getServices()))
+            })
+        }
+    }
+
+    fun importFullJson(json: JSONObject) {
+        val apps = json.optJSONObject("appointments") ?: JSONObject()
+        val off = json.optJSONObject("off_days") ?: JSONObject()
+        val work = json.optJSONObject("work_exceptions") ?: JSONObject()
+        prefs.edit()
+            .putString(KEY_DATA, apps.toString())
+            .putString(KEY_OFF, off.toString())
+            .putString(KEY_WORK_EXCEPTION, work.toString())
+            .apply()
+
+        val s = json.optJSONObject("settings")
+        if (s != null) {
+            if (s.has("salonName")) settings.salonName = s.optString("salonName", settings.salonName)
+            if (s.has("maxSlots")) settings.maxSlots = s.optInt("maxSlots", settings.maxSlots)
+            if (s.has("weekStartsOn")) settings.weekStartsOn = s.optInt("weekStartsOn", settings.weekStartsOn)
+            if (s.has("style")) settings.style = AppStyle.fromId(s.optString("style"))
+            if (s.has("nightMode")) settings.nightMode = NightMode.fromId(s.optString("nightMode"))
+            if (s.has("offWeekdays")) {
+                val raw = s.optString("offWeekdays", "")
+                if (raw.isNotBlank()) {
+                    settings.defaultOffDays = raw.split(",").mapNotNull { it.toIntOrNull() }.toSet()
+                }
+            }
+            if (s.has("services")) {
+                val arr = s.optJSONArray("services")
+                if (arr != null) {
+                    val list = (0 until arr.length()).map { arr.getString(it) }
+                    settings.setServices(list)
+                }
+            }
+        }
+        // Re-exportar para sincronizar archivo
+        autoBackup()
+    }
+
+    fun autoBackup() {
+        try {
+            backup.exportNow(this)
+        } catch (_: Exception) { }
+    }
+
+    fun manualExport(): String = backup.exportNow(this)
+
+    fun manualImport(): Boolean = backup.importFromFile(this)
+
+    fun backupPathHint(): String = backup.pathHint()
+
+    fun backupLastModified(): String = backup.lastModifiedLabel()
+
+    fun backupExists(): Boolean = backup.exists()
+
+    /**
+     * Al iniciar: si no hay datos locales pero si hay respaldo, restaurar.
+     * Si hay datos locales, solo asegura que el JSON este al dia.
+     */
+    fun restoreOnStartupIfNeeded(): Boolean {
+        return try {
+            if (!hasAnyData() && backup.exists()) {
+                backup.importFromFile(this)
+            } else if (hasAnyData()) {
+                autoBackup()
+                false
+            } else {
+                false
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private fun readData(): JSONObject {
         val raw = prefs.getString(KEY_DATA, "{}") ?: "{}"
         return try { JSONObject(raw) } catch (_: Exception) { JSONObject() }
@@ -186,6 +275,7 @@ class AppointmentStore(context: Context) {
 
     private fun writeData(obj: JSONObject) {
         prefs.edit().putString(KEY_DATA, obj.toString()).apply()
+        autoBackup()
     }
 
     private fun readOff(): JSONObject {
