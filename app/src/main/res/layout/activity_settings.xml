@@ -193,6 +193,43 @@
                 android:layout_marginBottom="18dp"
                 android:orientation="vertical" />
 
+            <!-- Respaldo -->
+            <TextView
+                android:id="@+id/lblBackup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Respaldo de turnos"
+                android:textAllCaps="true"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvBackupInfo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textSize="12sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnExportBackup"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="8dp"
+                android:text="Guardar respaldo ahora"
+                android:textAllCaps="false"
+                app:cornerRadius="14dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnImportBackup"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="18dp"
+                android:text="Cargar respaldo"
+                android:textAllCaps="false"
+                app:cornerRadius="14dp" />
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSaveSettings"
                 android:layout_width="match_parent"
@@ -207,7 +244,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
                 android:gravity="center"
-                android:text="Lely's Nails v1.2"
+                android:text="Lely's Nails v1.5"
                 android:textSize="12sp" />
         </LinearLayout>
     </ScrollView>

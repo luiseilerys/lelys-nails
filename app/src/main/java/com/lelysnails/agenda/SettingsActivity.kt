@@ -9,19 +9,23 @@ import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.lelysnails.agenda.data.AppointmentStore
 import com.lelysnails.agenda.data.AppStyle
 import com.lelysnails.agenda.data.NightMode
 import com.lelysnails.agenda.data.SettingsStore
 import com.lelysnails.agenda.databinding.ActivitySettingsBinding
 import com.lelysnails.agenda.ui.DrawableFactory
 import com.lelysnails.agenda.ui.StylePalette
+import com.lelysnails.agenda.widget.AgendaWidgetProvider
 import java.util.Calendar
 
 class SettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySettingsBinding
     private lateinit var settings: SettingsStore
+    private lateinit var store: AppointmentStore
     private lateinit var palette: StylePalette
 
     private val weekDayLabels = listOf(
@@ -43,6 +47,7 @@ class SettingsActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         settings = SettingsStore(this)
+        store = AppointmentStore(this)
         palette = resolvePalette()
         servicesDraft = settings.getServices().toMutableList()
 
@@ -53,6 +58,7 @@ class SettingsActivity : AppCompatActivity() {
         setupMaxSlots()
         setupOffDays()
         refreshServicesList()
+        refreshBackupInfo()
 
         binding.etSalonName.setText(settings.salonName)
         binding.etSalonName.isFocusable = true
@@ -77,6 +83,50 @@ class SettingsActivity : AppCompatActivity() {
             binding.etNewService.setText("")
             refreshServicesList()
         }
+
+        binding.btnExportBackup.setOnClickListener {
+            try {
+                val path = store.manualExport()
+                refreshBackupInfo()
+                toast("Respaldo guardado")
+                AlertDialog.Builder(this)
+                    .setTitle("Respaldo guardado")
+                    .setMessage("Archivo:\n${store.backupPathHint()}\n\nRuta completa:\n$path")
+                    .setPositiveButton("OK", null)
+                    .show()
+            } catch (e: Exception) {
+                toast("Error al guardar: ${e.message}")
+            }
+        }
+
+        binding.btnImportBackup.setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle("Cargar respaldo")
+                .setMessage("Se reemplazaran los turnos actuales con el archivo JSON de LelysNails. ¿Continuar?")
+                .setPositiveButton("Cargar") { _, _ ->
+                    val ok = store.manualImport()
+                    if (ok) {
+                        toast("Respaldo cargado")
+                        AgendaWidgetProvider.refreshAll(this)
+                        refreshBackupInfo()
+                        setResult(RESULT_OK)
+                    } else {
+                        toast("No se encontro archivo de respaldo")
+                    }
+                }
+                .setNegativeButton("Cancelar", null)
+                .show()
+        }
+    }
+
+    private fun refreshBackupInfo() {
+        val info = if (store.backupExists()) {
+            "Ultimo respaldo: ${store.backupLastModified()}\nCarpeta: LelysNails / agenda_latest.json\n${store.backupPathHint()}"
+        } else {
+            "Aun no hay respaldo. Se crea solo al guardar turnos."
+        }
+        binding.tvBackupInfo.text = info
+        binding.tvBackupInfo.setTextColor(palette.muted)
     }
 
     private fun resolvePalette(): StylePalette {
@@ -102,7 +152,8 @@ class SettingsActivity : AppCompatActivity() {
 
         listOf(
             binding.lblSalon, binding.lblStyle, binding.lblNight,
-            binding.lblWeek, binding.lblSlots, binding.lblOffDays, binding.lblServices
+            binding.lblWeek, binding.lblSlots, binding.lblOffDays,
+            binding.lblServices, binding.lblBackup
         ).forEach { it.setTextColor(p.muted) }
 
         binding.etSalonName.setTextColor(p.ink)
@@ -118,9 +169,13 @@ class SettingsActivity : AppCompatActivity() {
 
         binding.btnAddService.setBackgroundColor(p.primary)
         binding.btnAddService.setTextColor(p.onPrimary)
+        binding.btnExportBackup.setBackgroundColor(p.primary)
+        binding.btnExportBackup.setTextColor(p.onPrimary)
+        binding.btnImportBackup.setTextColor(p.primary)
         binding.btnSaveSettings.setBackgroundColor(p.primary)
         binding.btnSaveSettings.setTextColor(p.onPrimary)
         binding.tvVersion.setTextColor(p.muted)
+        binding.tvBackupInfo.setTextColor(p.muted)
     }
 
     private fun setupStyleGroup() {
@@ -230,18 +285,14 @@ class SettingsActivity : AppCompatActivity() {
         if (checkedStyle != View.NO_ID) {
             val rb = binding.rgStyle.findViewById<RadioButton>(checkedStyle)
             val styleId = rb?.tag as? String
-            if (styleId != null) {
-                settings.style = AppStyle.fromId(styleId)
-            }
+            if (styleId != null) settings.style = AppStyle.fromId(styleId)
         }
 
         val checkedNight = binding.rgNight.checkedRadioButtonId
         if (checkedNight != View.NO_ID) {
             val rb = binding.rgNight.findViewById<RadioButton>(checkedNight)
             val nightId = rb?.tag as? String
-            if (nightId != null) {
-                settings.nightMode = NightMode.fromId(nightId)
-            }
+            if (nightId != null) settings.nightMode = NightMode.fromId(nightId)
         }
 
         val weekIdx = binding.spWeekStart.selectedItemPosition
@@ -251,6 +302,9 @@ class SettingsActivity : AppCompatActivity() {
         settings.defaultOffDays = offCheckboxes.filter { it.value.isChecked }.keys
         settings.salonName = binding.etSalonName.text?.toString()?.trim().orEmpty()
         settings.setServices(servicesDraft)
+
+        // Incluir ajustes en el JSON de respaldo
+        store.autoBackup()
 
         toast("Ajustes guardados \u00b7 estilo: ${settings.style.label}")
         setResult(RESULT_OK)
