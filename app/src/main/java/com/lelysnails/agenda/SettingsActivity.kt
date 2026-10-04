@@ -303,8 +303,10 @@ class SettingsActivity : AppCompatActivity() {
         settings.salonName = binding.etSalonName.text?.toString()?.trim().orEmpty()
         settings.setServices(servicesDraft)
 
-        // Incluir ajustes en el JSON de respaldo
         store.autoBackup()
+
+        // Actualizar widgets con el nuevo estilo
+        AgendaWidgetProvider.refreshAll(this)
 
         toast("Ajustes guardados \u00b7 estilo: ${settings.style.label}")
         setResult(RESULT_OK)
