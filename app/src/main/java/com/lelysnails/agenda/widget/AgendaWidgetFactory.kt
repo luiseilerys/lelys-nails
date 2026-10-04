@@ -25,6 +25,7 @@ class AgendaWidgetFactory(
         val key: String?,
         val kind: DayKind,
         val selected: Boolean,
+        val isToday: Boolean,
         val dots: String
     )
 
@@ -38,12 +39,16 @@ class AgendaWidgetFactory(
         val month = WidgetPrefs.getMonth(context, widgetId)
         val selected = WidgetPrefs.getSelectedKey(context, widgetId)
 
+        val today = Calendar.getInstance()
+        val todayKey = AppointmentStore.dateKey(
+            today.get(Calendar.YEAR), today.get(Calendar.MONTH), today.get(Calendar.DAY_OF_MONTH)
+        )
+
         val cal = Calendar.getInstance().apply {
             set(Calendar.YEAR, year)
             set(Calendar.MONTH, month)
             set(Calendar.DAY_OF_MONTH, 1)
         }
-        // Widget weekdays row is L M X J V S D (Mon-first)
         val firstDow = cal.get(Calendar.DAY_OF_WEEK)
         val monFirst = listOf(
             Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY,
@@ -53,7 +58,7 @@ class AgendaWidgetFactory(
         val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
 
         val list = mutableListOf<Cell>()
-        repeat(offset) { list.add(Cell(0, null, DayKind.BLANK, false, "")) }
+        repeat(offset) { list.add(Cell(0, null, DayKind.BLANK, false, false, "")) }
 
         for (d in 1..daysInMonth) {
             val key = AppointmentStore.dateKey(year, month, d)
@@ -64,12 +69,12 @@ class AgendaWidgetFactory(
                     append(if (store.getAppointment(key, s) != null) "\u25CF" else "\u25CB")
                 }
             }.takeIf { kind != DayKind.OFF && kind != DayKind.BLANK } ?: ""
-            list.add(Cell(d, key, kind, key == selected, dots))
+            list.add(Cell(d, key, kind, key == selected, key == todayKey, dots))
         }
 
         val total = offset + daysInMonth
         val tail = (7 - total % 7) % 7
-        repeat(tail) { list.add(Cell(0, null, DayKind.BLANK, false, "")) }
+        repeat(tail) { list.add(Cell(0, null, DayKind.BLANK, false, false, "")) }
         cells = list
     }
 
@@ -89,7 +94,9 @@ class AgendaWidgetFactory(
             return rv
         }
 
-        rv.setTextViewText(R.id.cellDay, cell.day.toString())
+        // Hoy: numero con un punto medio sutil delante (no fondo fuerte)
+        val label = if (cell.isToday) "\u00B7${cell.day}" else cell.day.toString()
+        rv.setTextViewText(R.id.cellDay, label)
         rv.setTextViewText(R.id.cellDots, cell.dots)
 
         when {
@@ -111,7 +118,11 @@ class AgendaWidgetFactory(
             }
             else -> {
                 rv.setInt(R.id.cellInner, "setBackgroundResource", R.drawable.bg_widget_day_free)
-                rv.setTextColor(R.id.cellDay, 0xFF3D2B33.toInt())
+                // Hoy libre: tono primario suave en el texto
+                rv.setTextColor(
+                    R.id.cellDay,
+                    if (cell.isToday) 0xFFE8799A.toInt() else 0xFF3D2B33.toInt()
+                )
             }
         }
 

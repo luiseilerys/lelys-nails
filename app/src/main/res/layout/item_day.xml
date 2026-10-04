@@ -12,7 +12,8 @@
         android:background="@drawable/bg_day_free"
         android:gravity="center"
         android:orientation="vertical"
-        android:paddingVertical="6dp">
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp">
 
         <TextView
             android:id="@+id/tvDayNum"
@@ -23,7 +24,15 @@
             android:textStyle="bold"
             tools:text="15" />
 
-        <!-- Puntos de turnos (libres / parcial / completo) -->
+        <!-- Indicador sutil del dia de hoy (raya corta bajo el numero) -->
+        <View
+            android:id="@+id/todayMark"
+            android:layout_width="12dp"
+            android:layout_height="2dp"
+            android:layout_marginTop="2dp"
+            android:background="@color/rose"
+            android:visibility="gone" />
+
         <LinearLayout
             android:id="@+id/dotsRow"
             android:layout_width="wrap_content"
@@ -41,17 +50,16 @@
                 android:id="@+id/dot2"
                 android:layout_width="5dp"
                 android:layout_height="5dp"
-                android:layout_marginStart="3dp"
+                android:layout_marginLeft="3dp"
                 android:background="@drawable/bg_dot_off" />
         </LinearLayout>
 
-        <!-- Icono bloqueado solo en días no laborables -->
         <TextView
             android:id="@+id/tvOffMark"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="1dp"
-            android:text="✕"
+            android:text="\u2715"
             android:textColor="@color/off_text"
             android:textSize="9sp"
             android:textStyle="bold"

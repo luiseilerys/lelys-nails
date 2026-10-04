@@ -37,6 +37,7 @@ class CalendarAdapter(
     inner class VH(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val container: LinearLayout = itemView.findViewById(R.id.dayContainer)
         private val tvDay: TextView = itemView.findViewById(R.id.tvDayNum)
+        private val todayMark: View = itemView.findViewById(R.id.todayMark)
         private val dotsRow: LinearLayout = itemView.findViewById(R.id.dotsRow)
         private val dot1: View = itemView.findViewById(R.id.dot1)
         private val dot2: View = itemView.findViewById(R.id.dot2)
@@ -56,23 +57,39 @@ class CalendarAdapter(
             tvOffMark.visibility = View.GONE
             dotsRow.visibility = View.VISIBLE
 
+            // Hoy: marca sutil (raya corta), sin fondo fuerte
+            if (cell.isToday) {
+                todayMark.visibility = View.VISIBLE
+                todayMark.setBackgroundColor(p.primary)
+            } else {
+                todayMark.visibility = View.GONE
+            }
+
             when (cell.kind) {
                 DayKind.FREE -> {
-                    container.background = DrawableFactory.rounded(
-                        container, p.freeBg, p.freeStroke, 1.5f, p.cornerDay
-                    )
-                    if (cell.isSelected) {
-                        container.background = DrawableFactory.rounded(
-                            container, p.freeBg, p.primary, 3f, p.cornerDay
-                        )
+                    val stroke = when {
+                        cell.isSelected -> p.primary
+                        else -> p.freeStroke
                     }
-                    tvDay.setTextColor(if (cell.isToday) p.primary else p.ink)
+                    val strokeW = if (cell.isSelected) 2.5f else 1.5f
+                    container.background = DrawableFactory.rounded(
+                        container, p.freeBg, stroke, strokeW, p.cornerDay
+                    )
+                    // Numero: color normal; hoy solo un poco del color primario (no chillante)
+                    tvDay.setTextColor(
+                        if (cell.isToday && !cell.isSelected) p.primary else p.ink
+                    )
                     setDots(cell, p.primary, p.line)
                 }
                 DayKind.PARTIAL -> {
                     container.background = DrawableFactory.gradient(
                         container, p.partialStart, p.partialEnd, p.cornerDay, p.partialEnd
                     )
+                    if (cell.isSelected) {
+                        container.background = DrawableFactory.gradient(
+                            container, p.partialStart, p.partialEnd, p.cornerDay, p.primary
+                        )
+                    }
                     tvDay.setTextColor(p.partialInk)
                     setDots(cell, p.partialInk, p.partialStart)
                 }
@@ -81,6 +98,8 @@ class CalendarAdapter(
                         container, p.fullStart, p.fullEnd, p.cornerDay, p.fullEnd
                     )
                     tvDay.setTextColor(p.onPrimary)
+                    // En dias llenos la raya de hoy se aclara un poco
+                    if (cell.isToday) todayMark.setBackgroundColor(p.onPrimary)
                     setDots(cell, p.onPrimary, p.fullStart)
                 }
                 DayKind.OFF -> {
@@ -93,6 +112,8 @@ class CalendarAdapter(
                     dotsRow.visibility = View.GONE
                     tvOffMark.visibility = View.VISIBLE
                     tvOffMark.setTextColor(p.offText)
+                    // Hoy en dia off: marca suave con color muted
+                    if (cell.isToday) todayMark.setBackgroundColor(p.offText)
                 }
                 else -> {}
             }
@@ -102,7 +123,6 @@ class CalendarAdapter(
 
         private fun setDots(cell: DayCell, onColor: Int, offColor: Int) {
             dotsRow.visibility = View.VISIBLE
-            // Solo 2 dots en layout; slots extra se reflejan en color del dia
             dot1.background = DrawableFactory.oval(if (cell.slot1Filled) onColor else offColor)
             dot2.background = DrawableFactory.oval(if (cell.slot2Filled) onColor else offColor)
         }
