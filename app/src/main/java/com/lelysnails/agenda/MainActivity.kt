@@ -55,10 +55,7 @@ class MainActivity : AppCompatActivity() {
 
     private val settingsLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
-    ) {
-        // Recrear activity para aplicar estilo de punta a punta
-        recreate()
-    }
+    ) { recreate() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -115,10 +112,17 @@ class MainActivity : AppCompatActivity() {
         binding.headerBar.background = DrawableFactory.gradient(
             binding.headerBar, p.headerStart, p.headerEnd, 0f
         )
-        binding.tvLogo.text = p.logoEmoji
-        binding.tvLogo.background = DrawableFactory.rounded(
-            binding.tvLogo, 0x38FFFFFF, null, 0f, p.cornerBtn
-        )
+        try {
+            binding.ivLogo.background = DrawableFactory.rounded(
+                binding.ivLogo, 0x38FFFFFF, null, 0f, p.cornerBtn
+            )
+            binding.ivLogo.setColorFilter(p.onPrimary)
+        } catch (_: Exception) {
+            binding.tvLogo.text = p.logoEmoji
+            binding.tvLogo.background = DrawableFactory.rounded(
+                binding.tvLogo, 0x38FFFFFF, null, 0f, p.cornerBtn
+            )
+        }
         binding.tvAppName.text = settings.salonName
         binding.tvAppName.setTextColor(p.onPrimary)
         binding.tvSubtitle.text = "Agenda \u00b7 ${store.maxSlots()} por dia"
@@ -274,10 +278,9 @@ class MainActivity : AppCompatActivity() {
             val key = AppointmentStore.dateKey(viewYear, viewMonth, d)
             val defaultOff = store.isDefaultOff(viewYear, viewMonth, d)
             val customOff = store.isCustomOff(key)
-            val kind = when {
-                defaultOff || customOff -> DayKind.OFF
-                else -> store.dayKind(key)
-            }
+            val workEx = store.isWorkException(key)
+            // Dia off solo si sigue bloqueado (sin excepcion de trabajo)
+            val kind = store.dayKind(key)
             list.add(
                 DayCell(
                     dayOfMonth = d,
@@ -285,7 +288,7 @@ class MainActivity : AppCompatActivity() {
                     kind = kind,
                     isToday = key == todayKey,
                     isSelected = key == selectedKey,
-                    isDefaultOff = defaultOff,
+                    isDefaultOff = defaultOff && !workEx,
                     isCustomOff = customOff,
                     slot1Filled = store.getAppointment(key, 1) != null,
                     slot2Filled = store.getAppointment(key, 2) != null
@@ -301,10 +304,30 @@ class MainActivity : AppCompatActivity() {
 
     private fun onDayClicked(cell: DayCell) {
         if (cell.kind == DayKind.BLANK) return
-        if (cell.isDefaultOff) {
-            toast(getString(R.string.day_off_msg))
+
+        // Domingo / miercoles (u otro fijo off) sin excepcion: confirmar
+        if (store.isDefaultOffKey(cell.dateKey) && !store.isWorkException(cell.dateKey) && !store.isCustomOff(cell.dateKey)) {
+            val parsed = AppointmentStore.parseKey(cell.dateKey) ?: return
+            val (y, m, d) = parsed
+            val cal = Calendar.getInstance().apply { set(y, m, d) }
+            val dayName = resources.getStringArray(R.array.days_long)[cal.get(Calendar.DAY_OF_WEEK) - 1]
+            val months = resources.getStringArray(R.array.months)
+            val dateLabel = "$d de ${months[m]} $y"
+            AlertDialog.Builder(this)
+                .setTitle(R.string.confirm_work_title)
+                .setMessage(getString(R.string.confirm_work_message, dayName, dateLabel))
+                .setPositiveButton(R.string.confirm_work_yes) { _, _ ->
+                    store.setWorkException(cell.dateKey, true)
+                    toast(getString(R.string.work_exception_enabled))
+                    selectedKey = cell.dateKey
+                    render()
+                    openDaySheet(cell.dateKey)
+                }
+                .setNegativeButton(R.string.confirm_work_no, null)
+                .show()
             return
         }
+
         selectedKey = cell.dateKey
         render()
         openDaySheet(cell.dateKey)
@@ -431,6 +454,7 @@ class MainActivity : AppCompatActivity() {
                 .setPositiveButton(R.string.yes) { _, _ ->
                     store.clearDay(dateKey)
                     store.setCustomOff(dateKey, true)
+                    store.setWorkException(dateKey, false)
                     toast(getString(R.string.day_marked_off))
                     refreshDaySheetContent(sheetBinding, dateKey)
                     render()
@@ -439,6 +463,7 @@ class MainActivity : AppCompatActivity() {
                 .show()
         } else {
             store.setCustomOff(dateKey, true)
+            store.setWorkException(dateKey, false)
             toast(getString(R.string.day_marked_off))
             refreshDaySheetContent(sheetBinding, dateKey)
             render()
@@ -476,7 +501,6 @@ class MainActivity : AppCompatActivity() {
             formBinding.btnMove.visibility = View.GONE
         }
 
-        // Asegurar foco y teclado en campos de texto
         formBinding.etName.isFocusable = true
         formBinding.etName.isFocusableInTouchMode = true
         formBinding.etPhone.isFocusable = true
@@ -541,6 +565,11 @@ class MainActivity : AppCompatActivity() {
         val (y, m, d) = parsed
         DatePickerDialog(this, { _, year, month, dayOfMonth ->
             val toKey = AppointmentStore.dateKey(year, month, dayOfMonth)
+            // Si destino es off fijo, pedir excepcion primero no; solo permitir si ya es laborable o forzar
+            if (store.isOff(toKey)) {
+                toast("Ese dia no es laborable. Habilitalo antes tocandolo en el calendario.")
+                return@DatePickerDialog
+            }
             val msg = store.moveAppointment(fromKey, fromSlot, toKey)
             toast(msg)
             if (msg.startsWith("Turno trasladado")) {
