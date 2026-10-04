@@ -55,6 +55,11 @@ class SettingsActivity : AppCompatActivity() {
         refreshServicesList()
 
         binding.etSalonName.setText(settings.salonName)
+        binding.etSalonName.isFocusable = true
+        binding.etSalonName.isFocusableInTouchMode = true
+        binding.etNewService.isFocusable = true
+        binding.etNewService.isFocusableInTouchMode = true
+
         binding.btnBack.setOnClickListener { finish() }
         binding.btnSaveSettings.setOnClickListener { saveAndFinish() }
 
@@ -120,8 +125,9 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun setupStyleGroup() {
         binding.rgStyle.removeAllViews()
-        AppStyle.entries.forEach { style ->
+        AppStyle.values().forEach { style ->
             val rb = RadioButton(this).apply {
+                id = View.generateViewId()
                 text = "${style.emoji}  ${style.label}"
                 tag = style.id
                 setTextColor(palette.ink)
@@ -134,8 +140,9 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun setupNightGroup() {
         binding.rgNight.removeAllViews()
-        NightMode.entries.forEach { mode ->
+        NightMode.values().forEach { mode ->
             val rb = RadioButton(this).apply {
+                id = View.generateViewId()
                 text = mode.label
                 tag = mode.id
                 setTextColor(palette.ink)
@@ -200,7 +207,7 @@ class SettingsActivity : AppCompatActivity() {
                 setTypeface(typeface, android.graphics.Typeface.BOLD)
                 setPadding(16, 8, 8, 8)
                 setOnClickListener {
-                    servicesDraft.remove(name)
+                    servicesDraft.removeAll { it.equals(name, true) }
                     refreshServicesList()
                 }
             }
@@ -219,15 +226,23 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun saveAndFinish() {
-        val styleId = (0 until binding.rgStyle.childCount)
-            .map { binding.rgStyle.getChildAt(it) as RadioButton }
-            .firstOrNull { it.isChecked }?.tag as? String
-        if (styleId != null) settings.style = AppStyle.fromId(styleId)
+        val checkedStyle = binding.rgStyle.checkedRadioButtonId
+        if (checkedStyle != View.NO_ID) {
+            val rb = binding.rgStyle.findViewById<RadioButton>(checkedStyle)
+            val styleId = rb?.tag as? String
+            if (styleId != null) {
+                settings.style = AppStyle.fromId(styleId)
+            }
+        }
 
-        val nightId = (0 until binding.rgNight.childCount)
-            .map { binding.rgNight.getChildAt(it) as RadioButton }
-            .firstOrNull { it.isChecked }?.tag as? String
-        if (nightId != null) settings.nightMode = NightMode.fromId(nightId)
+        val checkedNight = binding.rgNight.checkedRadioButtonId
+        if (checkedNight != View.NO_ID) {
+            val rb = binding.rgNight.findViewById<RadioButton>(checkedNight)
+            val nightId = rb?.tag as? String
+            if (nightId != null) {
+                settings.nightMode = NightMode.fromId(nightId)
+            }
+        }
 
         val weekIdx = binding.spWeekStart.selectedItemPosition
         settings.weekStartsOn = weekDayLabels[weekIdx].first
@@ -237,7 +252,7 @@ class SettingsActivity : AppCompatActivity() {
         settings.salonName = binding.etSalonName.text?.toString()?.trim().orEmpty()
         settings.setServices(servicesDraft)
 
-        toast("Ajustes guardados")
+        toast("Ajustes guardados \u00b7 estilo: ${settings.style.label}")
         setResult(RESULT_OK)
         finish()
     }

@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
+import android.view.WindowManager
 import android.widget.ArrayAdapter
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -19,6 +20,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.ColorUtils
 import androidx.recyclerview.widget.GridLayoutManager
+import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.lelysnails.agenda.data.AppointmentStore
 import com.lelysnails.agenda.data.NightMode
@@ -53,7 +55,10 @@ class MainActivity : AppCompatActivity() {
 
     private val settingsLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
-    ) { reloadThemeAndUi() }
+    ) {
+        // Recrear activity para aplicar estilo de punta a punta
+        recreate()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -102,16 +107,6 @@ class MainActivity : AppCompatActivity() {
         return StylePalette.resolve(settings.style, dark)
     }
 
-    private fun reloadThemeAndUi() {
-        settings = SettingsStore(this)
-        store = AppointmentStore(this)
-        palette = resolvePalette()
-        applyThemeToChrome()
-        setupWeekdays()
-        setupLegend()
-        render()
-    }
-
     private fun applyThemeToChrome() {
         val p = palette
         binding.rootMain.setBackgroundColor(p.bg)
@@ -153,11 +148,9 @@ class MainActivity : AppCompatActivity() {
         )
         binding.btnToday.setTextColor(p.primary)
 
-        // Boton ajustes: transparente, solo icono suave
         binding.btnSettings.setBackgroundColor(Color.TRANSPARENT)
-        binding.btnSettings.alpha = 0.5f
-        val iconColor = ColorUtils.setAlphaComponent(p.primary, 180)
-        binding.btnSettings.setColorFilter(iconColor)
+        binding.btnSettings.alpha = 0.55f
+        binding.btnSettings.setColorFilter(ColorUtils.setAlphaComponent(p.primary, 200))
     }
 
     private fun setupWeekdays() {
@@ -317,12 +310,28 @@ class MainActivity : AppCompatActivity() {
         openDaySheet(cell.dateKey)
     }
 
+    private fun expandSheet(dialog: BottomSheetDialog) {
+        dialog.setOnShowListener {
+            val sheet = dialog.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
+            if (sheet != null) {
+                val behavior = BottomSheetBehavior.from(sheet)
+                behavior.state = BottomSheetBehavior.STATE_EXPANDED
+                behavior.skipCollapsed = true
+                behavior.isFitToContents = true
+            }
+        }
+        dialog.window?.setSoftInputMode(
+            WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+        )
+    }
+
     private fun openDaySheet(dateKey: String) {
         daySheet?.dismiss()
         val sheetBinding = BottomSheetDayBinding.inflate(layoutInflater)
         currentDaySheetBinding = sheetBinding
         val dialog = BottomSheetDialog(this)
         dialog.setContentView(sheetBinding.root)
+        expandSheet(dialog)
         daySheet = dialog
 
         val parsed = AppointmentStore.parseKey(dateKey) ?: return
@@ -441,6 +450,7 @@ class MainActivity : AppCompatActivity() {
         val formBinding = DialogAppointmentFormBinding.inflate(layoutInflater)
         val dialog = BottomSheetDialog(this)
         dialog.setContentView(formBinding.root)
+        expandSheet(dialog)
         formSheet = dialog
 
         formBinding.tvFormTitle.text = "Turno $slot"
@@ -466,6 +476,14 @@ class MainActivity : AppCompatActivity() {
             formBinding.btnMove.visibility = View.GONE
         }
 
+        // Asegurar foco y teclado en campos de texto
+        formBinding.etName.isFocusable = true
+        formBinding.etName.isFocusableInTouchMode = true
+        formBinding.etPhone.isFocusable = true
+        formBinding.etPhone.isFocusableInTouchMode = true
+        formBinding.etNotes.isFocusable = true
+        formBinding.etNotes.isFocusableInTouchMode = true
+
         formBinding.etTime.setOnClickListener {
             val cal = Calendar.getInstance()
             val parts = formBinding.etTime.text?.toString()?.split(":")
@@ -482,6 +500,7 @@ class MainActivity : AppCompatActivity() {
             val name = formBinding.etName.text?.toString()?.trim().orEmpty()
             if (name.isEmpty()) {
                 formBinding.etName.error = getString(R.string.name_required)
+                formBinding.etName.requestFocus()
                 return@setOnClickListener
             }
             val serviceSel = formBinding.spService.selectedItem?.toString().orEmpty()
@@ -514,6 +533,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         dialog.show()
+        formBinding.etName.post { formBinding.etName.requestFocus() }
     }
 
     private fun promptMoveAppointment(fromKey: String, fromSlot: Int, formDialog: BottomSheetDialog) {
@@ -526,7 +546,6 @@ class MainActivity : AppCompatActivity() {
             if (msg.startsWith("Turno trasladado")) {
                 formDialog.dismiss()
                 daySheet?.dismiss()
-                // Abrir el dia destino
                 selectedKey = toKey
                 viewYear = year
                 viewMonth = month
