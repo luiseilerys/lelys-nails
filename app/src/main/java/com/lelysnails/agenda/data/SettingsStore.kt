@@ -6,6 +6,7 @@ import java.util.Calendar
 
 enum class AppStyle(val id: String, val label: String, val emoji: String) {
     ROSA("rosa", "Clasico rosa", "\uD83D\uDC85"),
+    VERDE("verde", "Verde fresco", "\uD83C\uDF3F"),
     PRO("pro", "Profesional", "\uD83D\uDCBC"),
     MINIMAL("minimal", "Minimalista", "\u25FB"),
     LAVANDA("lavanda", "Lavanda", "\uD83C\uDF3A"),
@@ -13,7 +14,7 @@ enum class AppStyle(val id: String, val label: String, val emoji: String) {
     DORADO("dorado", "Dorado elegante", "\u2728");
 
     companion object {
-        fun fromId(id: String?) = entries.find { it.id == id } ?: ROSA
+        fun fromId(id: String?) = values().find { it.id == id } ?: ROSA
     }
 }
 
@@ -23,7 +24,7 @@ enum class NightMode(val id: String, val label: String) {
     SYSTEM("system", "Segun el sistema");
 
     companion object {
-        fun fromId(id: String?) = entries.find { it.id == id } ?: LIGHT
+        fun fromId(id: String?) = values().find { it.id == id } ?: LIGHT
     }
 }
 
@@ -62,7 +63,6 @@ class SettingsStore(context: Context) {
     fun isWeekdayOff(calendarDayOfWeek: Int): Boolean =
         calendarDayOfWeek in defaultOffDays
 
-    /** Servicios personalizados (vac\u00edo = lista por defecto) */
     fun getServices(): List<String> {
         val raw = prefs.getString(KEY_SERVICES, null)
         if (raw.isNullOrBlank()) return DEFAULT_SERVICES.toList()

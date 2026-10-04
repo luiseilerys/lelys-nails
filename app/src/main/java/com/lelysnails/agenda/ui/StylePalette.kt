@@ -25,6 +25,15 @@ data class StylePalette(
                 "#FFFFFF","#E8C4D0","#FFF3B0","#FFD93D","#7A5D00","#FF8A8A","#E63946",
                 "#E4E9EF","#9AA8B8","#7A8A9A","#F9B4C7","#CF5F86",26f,14f,13f,"\uD83D\uDC85",false
             )
+            AppStyle.VERDE -> if (dark) p(
+                "#6FCF97","#27AE60","#A8E6C3","#0B1F14","#E6F5EC","#8FBF9F","#0C1A12","#152820","#1E3A2C",
+                "#152820","#2A4A38","#3D5A20","#8BC34A","#E8F5C8","#7A3030","#E74C3C",
+                "#121E18","#2A3A30","#6A8A78","#1E6B45","#0C1A12",22f,12f,12f,"\uD83C\uDF3F",true
+            ) else p(
+                "#27AE60","#1E8449","#6FCF97","#FFFFFF","#1B3A28","#6B9080","#F2FAF5","#FFFFFF","#D5EDE0",
+                "#FFFFFF","#B8DFC8","#E8F5C8","#A8D08D","#3D5A20","#F5A9A9","#E74C3C",
+                "#E8EEEA","#9AADB0","#6B8070","#6FCF97","#1E8449",22f,12f,12f,"\uD83C\uDF3F",false
+            )
             AppStyle.PRO -> if (dark) p(
                 "#5B8DEF","#3D5A80","#7BA3F0","#0D1520","#E8EEF5","#8A9BB0","#0D1520","#162033","#243044",
                 "#162033","#2E4060","#1A3050","#3D6BBF","#C5D8FF","#6B4020","#C47A3A",
