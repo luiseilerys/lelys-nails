@@ -16,15 +16,15 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingBottom="80dp">
+            android:paddingBottom="72dp">
 
             <FrameLayout
                 android:id="@+id/headerBar"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingStart="22dp"
+                android:paddingLeft="22dp"
                 android:paddingTop="48dp"
-                android:paddingEnd="22dp"
+                android:paddingRight="22dp"
                 android:paddingBottom="36dp">
 
                 <LinearLayout
@@ -44,7 +44,7 @@
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="13dp"
+                        android:layout_marginLeft="13dp"
                         android:layout_weight="1"
                         android:orientation="vertical">
 
@@ -73,9 +73,9 @@
                 android:id="@+id/cardCalendar"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="14dp"
+                android:layout_marginLeft="14dp"
                 android:layout_marginTop="-20dp"
-                android:layout_marginEnd="14dp"
+                android:layout_marginRight="14dp"
                 app:cardCornerRadius="26dp"
                 app:cardElevation="8dp">
 
@@ -118,8 +118,10 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="4dp"
-                                android:paddingHorizontal="10dp"
-                                android:paddingVertical="3dp"
+                                android:paddingLeft="10dp"
+                                android:paddingTop="3dp"
+                                android:paddingRight="10dp"
+                                android:paddingBottom="3dp"
                                 android:text="@string/today"
                                 android:textAllCaps="true"
                                 android:textSize="10.5sp"
@@ -217,8 +219,9 @@
                 android:id="@+id/tvHint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginHorizontal="20dp"
+                android:layout_marginLeft="20dp"
                 android:layout_marginTop="16dp"
+                android:layout_marginRight="20dp"
                 android:layout_marginBottom="24dp"
                 android:gravity="center"
                 android:text="@string/hint"
@@ -226,15 +229,18 @@
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
-    <!-- Menu 3 rayas esquina inferior derecha -->
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
+    <!-- Boton ajustes: transparente, no tapa el contenido -->
+    <ImageButton
         android:id="@+id/btnSettings"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_gravity="bottom|end"
-        android:layout_margin="20dp"
+        android:layout_margin="16dp"
+        android:alpha="0.55"
+        android:background="@android:color/transparent"
         android:contentDescription="Ajustes"
-        android:src="@drawable/ic_menu"
-        app:fabSize="normal"
-        app:tint="#FFFFFF" />
+        android:elevation="0dp"
+        android:padding="10dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_menu" />
 </FrameLayout>

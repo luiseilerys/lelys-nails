@@ -12,9 +12,9 @@
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="12dp"
+        android:paddingLeft="12dp"
         android:paddingTop="40dp"
-        android:paddingEnd="16dp"
+        android:paddingRight="16dp"
         android:paddingBottom="16dp">
 
         <ImageButton
@@ -29,7 +29,7 @@
             android:id="@+id/tvSettingsTitle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
+            android:layout_marginLeft="8dp"
             android:layout_weight="1"
             android:text="Ajustes"
             android:textSize="20sp"
@@ -150,6 +150,49 @@
                 android:layout_marginBottom="18dp"
                 android:orientation="vertical" />
 
+            <TextView
+                android:id="@+id/lblServices"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Servicios"
+                android:textAllCaps="true"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <EditText
+                    android:id="@+id/etNewService"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="Nuevo servicio"
+                    android:inputType="textCapSentences"
+                    android:maxLines="1"
+                    android:padding="12dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnAddService"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="8dp"
+                    android:text="Anadir"
+                    app:cornerRadius="12dp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/servicesContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="18dp"
+                android:orientation="vertical" />
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSaveSettings"
                 android:layout_width="match_parent"
@@ -164,7 +207,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
                 android:gravity="center"
-                android:text="Lely's Nails v1.1"
+                android:text="Lely's Nails v1.2"
                 android:textSize="12sp" />
         </LinearLayout>
     </ScrollView>

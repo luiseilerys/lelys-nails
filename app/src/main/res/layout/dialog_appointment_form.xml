@@ -18,8 +18,9 @@
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingHorizontal="20dp"
+        android:paddingLeft="20dp"
         android:paddingTop="14dp"
+        android:paddingRight="20dp"
         android:paddingBottom="14dp">
 
         <ImageButton
@@ -35,7 +36,7 @@
             android:id="@+id/tvFormTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
+            android:layout_marginLeft="12dp"
             android:text="Turno 1"
             android:textColor="@color/ink"
             android:textSize="16sp"
@@ -51,8 +52,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingHorizontal="20dp"
-        android:paddingTop="16dp">
+        android:paddingLeft="20dp"
+        android:paddingTop="16dp"
+        android:paddingRight="20dp">
 
         <TextView
             style="@style/FieldLabel"
@@ -73,7 +75,7 @@
                 android:id="@+id/etName"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Ej. María López"
+                android:hint="Ej. Maria Lopez"
                 android:inputType="textPersonName"
                 android:maxLines="1" />
         </com.google.android.material.textfield.TextInputLayout>
@@ -108,7 +110,7 @@
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="6dp"
+                android:layout_marginRight="6dp"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
@@ -122,13 +124,14 @@
                     android:layout_height="52dp"
                     android:layout_marginBottom="15dp"
                     android:background="@drawable/bg_input"
-                    android:paddingHorizontal="12dp" />
+                    android:paddingLeft="12dp"
+                    android:paddingRight="12dp" />
             </LinearLayout>
 
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
+                android:layout_marginLeft="6dp"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
@@ -176,7 +179,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="top"
-                android:hint="Colores, diseños, observaciones…"
+                android:hint="Colores, disenos, observaciones..."
                 android:inputType="textMultiLine"
                 android:minLines="3" />
         </com.google.android.material.textfield.TextInputLayout>
@@ -186,8 +189,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingHorizontal="20dp"
-        android:paddingTop="12dp">
+        android:paddingLeft="20dp"
+        android:paddingTop="12dp"
+        android:paddingRight="20dp">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSave"
@@ -198,6 +202,17 @@
             android:textStyle="bold"
             app:backgroundTint="@color/rose"
             app:cornerRadius="17dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnMove"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="Trasladar a otro dia"
+            android:textColor="@color/rose"
+            android:visibility="gone"
+            app:cornerRadius="17dp"
+            app:strokeColor="@color/rose" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnDelete"
