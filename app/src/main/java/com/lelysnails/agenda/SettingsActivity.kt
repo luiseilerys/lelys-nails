@@ -2,9 +2,12 @@ package com.lelysnails.agenda
 
 import android.content.res.Configuration
 import android.os.Bundle
+import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.CheckBox
+import android.widget.LinearLayout
 import android.widget.RadioButton
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.lelysnails.agenda.data.AppStyle
@@ -32,6 +35,7 @@ class SettingsActivity : AppCompatActivity() {
     )
 
     private val offCheckboxes = mutableMapOf<Int, CheckBox>()
+    private var servicesDraft = mutableListOf<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,6 +44,7 @@ class SettingsActivity : AppCompatActivity() {
 
         settings = SettingsStore(this)
         palette = resolvePalette()
+        servicesDraft = settings.getServices().toMutableList()
 
         applyChrome()
         setupStyleGroup()
@@ -47,10 +52,26 @@ class SettingsActivity : AppCompatActivity() {
         setupWeekStart()
         setupMaxSlots()
         setupOffDays()
+        refreshServicesList()
 
         binding.etSalonName.setText(settings.salonName)
         binding.btnBack.setOnClickListener { finish() }
         binding.btnSaveSettings.setOnClickListener { saveAndFinish() }
+
+        binding.btnAddService.setOnClickListener {
+            val name = binding.etNewService.text?.toString()?.trim().orEmpty()
+            if (name.isEmpty()) {
+                toast("Escribe el nombre del servicio")
+                return@setOnClickListener
+            }
+            if (servicesDraft.any { it.equals(name, true) }) {
+                toast("Ese servicio ya existe")
+                return@setOnClickListener
+            }
+            servicesDraft.add(name)
+            binding.etNewService.setText("")
+            refreshServicesList()
+        }
     }
 
     private fun resolvePalette(): StylePalette {
@@ -76,7 +97,7 @@ class SettingsActivity : AppCompatActivity() {
 
         listOf(
             binding.lblSalon, binding.lblStyle, binding.lblNight,
-            binding.lblWeek, binding.lblSlots, binding.lblOffDays
+            binding.lblWeek, binding.lblSlots, binding.lblOffDays, binding.lblServices
         ).forEach { it.setTextColor(p.muted) }
 
         binding.etSalonName.setTextColor(p.ink)
@@ -84,7 +105,14 @@ class SettingsActivity : AppCompatActivity() {
         binding.etSalonName.background = DrawableFactory.rounded(
             binding.etSalonName, p.surface, p.line, 1.5f, p.cornerBtn
         )
+        binding.etNewService.setTextColor(p.ink)
+        binding.etNewService.setHintTextColor(p.muted)
+        binding.etNewService.background = DrawableFactory.rounded(
+            binding.etNewService, p.surface, p.line, 1.5f, p.cornerBtn
+        )
 
+        binding.btnAddService.setBackgroundColor(p.primary)
+        binding.btnAddService.setTextColor(p.onPrimary)
         binding.btnSaveSettings.setBackgroundColor(p.primary)
         binding.btnSaveSettings.setTextColor(p.onPrimary)
         binding.tvVersion.setTextColor(p.muted)
@@ -151,6 +179,45 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
+    private fun refreshServicesList() {
+        binding.servicesContainer.removeAllViews()
+        servicesDraft.forEach { name ->
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                setPadding(8, 10, 8, 10)
+            }
+            val tv = TextView(this).apply {
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                text = name
+                setTextColor(palette.ink)
+                textSize = 15f
+            }
+            val del = TextView(this).apply {
+                text = "Eliminar"
+                setTextColor(0xFFD9536F.toInt())
+                textSize = 13f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                setPadding(16, 8, 8, 8)
+                setOnClickListener {
+                    servicesDraft.remove(name)
+                    refreshServicesList()
+                }
+            }
+            row.addView(tv)
+            row.addView(del)
+            binding.servicesContainer.addView(row)
+
+            val line = View(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, 1
+                )
+                setBackgroundColor(palette.line)
+            }
+            binding.servicesContainer.addView(line)
+        }
+    }
+
     private fun saveAndFinish() {
         val styleId = (0 until binding.rgStyle.childCount)
             .map { binding.rgStyle.getChildAt(it) as RadioButton }
@@ -166,13 +233,16 @@ class SettingsActivity : AppCompatActivity() {
         settings.weekStartsOn = weekDayLabels[weekIdx].first
 
         settings.maxSlots = binding.spMaxSlots.selectedItemPosition + 1
-
         settings.defaultOffDays = offCheckboxes.filter { it.value.isChecked }.keys
-
         settings.salonName = binding.etSalonName.text?.toString()?.trim().orEmpty()
+        settings.setServices(servicesDraft)
 
-        Toast.makeText(this, "Ajustes guardados", Toast.LENGTH_SHORT).show()
+        toast("Ajustes guardados")
         setResult(RESULT_OK)
         finish()
+    }
+
+    private fun toast(msg: String) {
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
     }
 }

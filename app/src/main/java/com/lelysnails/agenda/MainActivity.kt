@@ -1,8 +1,10 @@
 package com.lelysnails.agenda
 
+import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.Intent
 import android.content.res.Configuration
+import android.graphics.Color
 import android.graphics.Paint
 import android.os.Bundle
 import android.util.Log
@@ -15,6 +17,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.graphics.ColorUtils
 import androidx.recyclerview.widget.GridLayoutManager
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.lelysnails.agenda.data.AppointmentStore
@@ -50,9 +53,7 @@ class MainActivity : AppCompatActivity() {
 
     private val settingsLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
-    ) {
-        reloadThemeAndUi()
-    }
+    ) { reloadThemeAndUi() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -119,7 +120,6 @@ class MainActivity : AppCompatActivity() {
         binding.headerBar.background = DrawableFactory.gradient(
             binding.headerBar, p.headerStart, p.headerEnd, 0f
         )
-        // bottom corners only via shape - gradient is fine full width
         binding.tvLogo.text = p.logoEmoji
         binding.tvLogo.background = DrawableFactory.rounded(
             binding.tvLogo, 0x38FFFFFF, null, 0f, p.cornerBtn
@@ -153,16 +153,15 @@ class MainActivity : AppCompatActivity() {
         )
         binding.btnToday.setTextColor(p.primary)
 
-        binding.btnSettings.backgroundTintList =
-            android.content.res.ColorStateList.valueOf(p.primary)
-        binding.btnSettings.imageTintList =
-            android.content.res.ColorStateList.valueOf(p.onPrimary)
+        // Boton ajustes: transparente, solo icono suave
+        binding.btnSettings.setBackgroundColor(Color.TRANSPARENT)
+        binding.btnSettings.alpha = 0.5f
+        val iconColor = ColorUtils.setAlphaComponent(p.primary, 180)
+        binding.btnSettings.setColorFilter(iconColor)
     }
 
     private fun setupWeekdays() {
-        val names = resources.getStringArray(R.array.weekdays) // Lun..Dom fixed order Mon-first in array
-        // Array is Lun,Mar,Mie,Jue,Vie,Sab,Dom which maps to Calendar MON=2 ... SUN=1
-        // Build ordered labels based on weekStartsOn
+        val names = resources.getStringArray(R.array.weekdays)
         val calOrder = orderedWeekDays(settings.weekStartsOn)
         val labelMap = mapOf(
             Calendar.MONDAY to names[0],
@@ -180,7 +179,7 @@ class MainActivity : AppCompatActivity() {
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 text = labelMap[dow] ?: ""
                 textSize = 10.5f
-                textAlignment = View.TEXT_ALIGNMENT_CENTER
+                gravity = android.view.Gravity.CENTER
                 setTypeface(typeface, android.graphics.Typeface.BOLD)
                 if (settings.isWeekdayOff(dow)) {
                     setTextColor(palette.offText)
@@ -384,7 +383,9 @@ class MainActivity : AppCompatActivity() {
             if (appt.time.isNotBlank()) parts.add("\uD83D\uDD50 ${appt.time}")
             if (appt.service.isNotBlank()) parts.add(appt.service)
             var meta = parts.joinToString(" \u00b7 ")
-            if (appt.phone.isNotBlank()) meta = if (meta.isEmpty()) "\uD83D\uDCDE ${appt.phone}" else "$meta\n\uD83D\uDCDE ${appt.phone}"
+            if (appt.phone.isNotBlank()) {
+                meta = if (meta.isEmpty()) "\uD83D\uDCDE ${appt.phone}" else "$meta\n\uD83D\uDCDE ${appt.phone}"
+            }
             b.tvSlotMeta.text = meta
             b.tvSlotMeta.visibility = if (meta.isEmpty()) View.GONE else View.VISIBLE
             if (appt.notes.isNotBlank()) {
@@ -443,8 +444,12 @@ class MainActivity : AppCompatActivity() {
         formSheet = dialog
 
         formBinding.tvFormTitle.text = "Turno $slot"
-        val services = resources.getStringArray(R.array.services)
-        formBinding.spService.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, services)
+
+        val serviceList = mutableListOf("Elegir...")
+        serviceList.addAll(settings.getServices())
+        formBinding.spService.adapter = ArrayAdapter(
+            this, android.R.layout.simple_spinner_dropdown_item, serviceList
+        )
 
         val existing = store.getAppointment(dateKey, slot)
         if (existing != null) {
@@ -452,9 +457,14 @@ class MainActivity : AppCompatActivity() {
             formBinding.etPhone.setText(existing.phone)
             formBinding.etTime.setText(existing.time)
             formBinding.etNotes.setText(existing.notes)
-            formBinding.spService.setSelection(services.indexOf(existing.service).coerceAtLeast(0))
+            val idx = serviceList.indexOfFirst { it.equals(existing.service, true) }.coerceAtLeast(0)
+            formBinding.spService.setSelection(idx)
             formBinding.btnDelete.visibility = View.VISIBLE
-        } else formBinding.btnDelete.visibility = View.GONE
+            formBinding.btnMove.visibility = View.VISIBLE
+        } else {
+            formBinding.btnDelete.visibility = View.GONE
+            formBinding.btnMove.visibility = View.GONE
+        }
 
         formBinding.etTime.setOnClickListener {
             val cal = Calendar.getInstance()
@@ -480,7 +490,7 @@ class MainActivity : AppCompatActivity() {
                 Appointment(
                     name = name,
                     phone = formBinding.etPhone.text?.toString()?.trim().orEmpty(),
-                    service = if (serviceSel == services[0]) "" else serviceSel,
+                    service = if (serviceSel == "Elegir...") "" else serviceSel,
                     time = formBinding.etTime.text?.toString()?.trim().orEmpty(),
                     notes = formBinding.etNotes.text?.toString()?.trim().orEmpty()
                 )
@@ -489,6 +499,10 @@ class MainActivity : AppCompatActivity() {
             dialog.dismiss()
             currentDaySheetBinding?.let { refreshDaySheetContent(it, dateKey) }
             render()
+        }
+
+        formBinding.btnMove.setOnClickListener {
+            promptMoveAppointment(dateKey, slot, dialog)
         }
 
         formBinding.btnDelete.setOnClickListener {
@@ -500,6 +514,26 @@ class MainActivity : AppCompatActivity() {
         }
 
         dialog.show()
+    }
+
+    private fun promptMoveAppointment(fromKey: String, fromSlot: Int, formDialog: BottomSheetDialog) {
+        val parsed = AppointmentStore.parseKey(fromKey) ?: return
+        val (y, m, d) = parsed
+        DatePickerDialog(this, { _, year, month, dayOfMonth ->
+            val toKey = AppointmentStore.dateKey(year, month, dayOfMonth)
+            val msg = store.moveAppointment(fromKey, fromSlot, toKey)
+            toast(msg)
+            if (msg.startsWith("Turno trasladado")) {
+                formDialog.dismiss()
+                daySheet?.dismiss()
+                // Abrir el dia destino
+                selectedKey = toKey
+                viewYear = year
+                viewMonth = month
+                render()
+                openDaySheet(toKey)
+            }
+        }, y, m, d).show()
     }
 
     private fun toast(msg: String) {
